@@ -10,18 +10,25 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
-/* Include existing DevKit headers */
+/* Include existing DevKit headers - disabled for initial builds */
+/* TODO: Re-enable when DevKit integration is complete */
+/*
 #ifdef CONFIG_OMI_UNIFIED_BUILD
 #include "../../../devkit/src/mic.h"
 #include "../../../devkit/src/config.h"
 #else
-/* Fallback definitions */
+*/
+/* Use minimal interface for now */
 #define MIC_BUFFER_SAMPLES 1600
 typedef void (*mix_handler)(int16_t *buffer);
-extern int mic_init(mix_handler handler);
-extern int mic_start(void);
-extern int mic_stop(void);
+
+/* Placeholder function declarations - TODO: integrate with DevKit code */
+static int mic_init(mix_handler handler) { return 0; }
+static int mic_start(void) { return 0; }
+static int mic_stop(void) { return 0; }
+/*
 #endif
+*/
 
 LOG_MODULE_REGISTER(hal_audio_nrf52840, CONFIG_LOG_DEFAULT_LEVEL);
 

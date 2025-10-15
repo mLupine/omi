@@ -10,7 +10,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
-#ifdef CONFIG_OMI_PLATFORM_NRF5340
+#ifdef OMI_PLATFORM_nrf5340
 
 /* Include HAL interfaces */
 #include "../hal/hal_platform.h"
@@ -99,4 +99,4 @@ int main(void)
 
 #else
 #error "This file should only be compiled for nRF5340 platform"
-#endif /* CONFIG_OMI_PLATFORM_NRF5340 */
+#endif /* OMI_PLATFORM_nrf5340 */

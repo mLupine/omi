@@ -10,19 +10,25 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
-/* Include existing production headers - paths adjusted to existing code */
+/* Include existing production headers - disabled for initial builds */
+/* TODO: Re-enable when production integration is complete */
+/*
 #ifdef CONFIG_OMI_UNIFIED_BUILD
-/* When building unified firmware, include production headers */
 #include "../../../omi/src/lib/core/transport.h"
 #include "../../../omi/src/lib/core/config.h"
 #else
-/* When building standalone, provide minimal interface */
-extern bool is_connected;
-extern int broadcast_audio_packets(uint8_t *data, size_t len);
-extern int transport_init(void);
-extern int start_advertising(void);
-extern int stop_advertising(void);
+*/
+/* Use minimal interface for now */
+static bool is_connected = false;
+
+/* Placeholder function declarations - TODO: integrate with production code */
+static int broadcast_audio_packets(uint8_t *data, size_t len) { return 0; }
+static int transport_init(void) { return 0; }
+static int start_advertising(void) { return 0; }
+static int stop_advertising(void) { return 0; }
+/*
 #endif
+*/
 
 LOG_MODULE_REGISTER(hal_bluetooth_nrf5340, CONFIG_LOG_DEFAULT_LEVEL);
 

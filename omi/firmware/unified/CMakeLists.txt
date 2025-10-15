@@ -23,9 +23,16 @@ enable_language(C ASM) # OPUS requires ASM
 # Project definition
 project(omi-unified)
 
-# Define unified build flag
+# Define unified build flags as compiler definitions
 add_compile_definitions(CONFIG_OMI_UNIFIED_BUILD=1)
+add_compile_definitions(CONFIG_OMI_PLATFORM_${OMI_PLATFORM}=1)
 add_compile_definitions(OMI_PLATFORM_${OMI_PLATFORM}=1)
+
+# Define HAL support
+add_compile_definitions(CONFIG_OMI_HAL=1)
+add_compile_definitions(CONFIG_OMI_HAL_AUDIO=1)
+add_compile_definitions(CONFIG_OMI_HAL_BLUETOOTH=1)
+add_compile_definitions(CONFIG_OMI_HAL_PLATFORM=1)
 
 # HAL source files - only header files in hal directory, implementations are in platform directories
 # No .c files in hal directory, only headers

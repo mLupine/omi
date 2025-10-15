@@ -1,0 +1,8 @@
+# West manifest for DevKit v2 legacy build
+manifest:
+  self:
+    path: devkit
+
+  projects:
+    # This is a minimal west.yml for legacy DevKit builds
+    # The actual nRF Connect SDK workspace is set up in CI

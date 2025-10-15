@@ -9,6 +9,7 @@
 #include "../../hal/hal_platform.h"
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <string.h>
 
 LOG_MODULE_REGISTER(hal_platform_nrf52840, CONFIG_LOG_DEFAULT_LEVEL);
 

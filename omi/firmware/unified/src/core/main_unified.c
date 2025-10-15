@@ -10,7 +10,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
-#ifdef CONFIG_OMI_PLATFORM_NRF52840
+#ifdef OMI_PLATFORM_nrf52840
 
 /* Include HAL interfaces */
 #include "../hal/hal_platform.h"
@@ -259,4 +259,4 @@ int main(void)
     return 0;
 }
 
-#endif /* CONFIG_OMI_PLATFORM_NRF52840 */
+#endif /* OMI_PLATFORM_nrf52840 */

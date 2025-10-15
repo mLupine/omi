@@ -9,7 +9,6 @@
         {
             "name": "omi-production-nrf5340",
             "displayName": "Omi Production (nRF5340) - Unified Build",
-            "configuration": "Debug",
             "hidden": false,
             "description": "Production hardware build using unified HAL with minimal changes to existing code",
             "generator": "Ninja",
@@ -27,7 +26,6 @@
         {
             "name": "devkit-v2-nrf52840",
             "displayName": "DevKit v2 (nRF52840) - Unified Build", 
-            "configuration": "Debug",
             "hidden": false,
             "description": "DevKit v2 hardware build using unified HAL, upgraded to SDK v2.9.0",
             "generator": "Ninja",
@@ -45,7 +43,6 @@
         {
             "name": "omi-production-legacy",
             "displayName": "Omi Production (Legacy Build)",
-            "configuration": "Debug",
             "hidden": false,
             "description": "Legacy production build - unchanged from original",
             "generator": "Ninja",
@@ -62,8 +59,7 @@
         },
         {
             "name": "devkit-v2-legacy",
-            "displayName": "DevKit v2 (Legacy Build)",
-            "configuration": "Debug", 
+            "displayName": "DevKit v2 (Legacy Build)", 
             "hidden": false,
             "description": "Legacy DevKit v2 build - unchanged from original",
             "generator": "Ninja",

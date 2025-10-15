@@ -139,19 +139,29 @@ jobs:
       - name: Build unified firmware - ${{ matrix.platform.description }}
         working-directory: omi/omi/firmware/unified
         run: |
-          export ZEPHYR_BASE=~/ncs/v2.9.0/zephyr
+          export ZEPHYR_BASE=$HOME/ncs/v2.9.0/zephyr
           export PATH="/opt/toolchains/zephyr-sdk-0.16.8/arm-zephyr-eabi/bin:$PATH"
           
           # Source the Zephyr environment
-          source ~/ncs/v2.9.0/zephyr/zephyr-env.sh
+          source $HOME/ncs/v2.9.0/zephyr/zephyr-env.sh
           
           echo "Building ${{ matrix.platform.description }}..."
           echo "Using preset: ${{ matrix.platform.preset }}"
           
+          # Verify Zephyr environment
+          echo "ZEPHYR_BASE: $ZEPHYR_BASE"
+          echo "Zephyr exists: $(test -d "$ZEPHYR_BASE" && echo "yes" || echo "no")"
+          
+          # List available presets for debugging
+          echo "Available CMake presets:"
+          cmake --list-presets
+          
           # Configure build
+          echo "Configuring build..."
           cmake --preset ${{ matrix.platform.preset }}
           
           # Build firmware
+          echo "Building firmware..."
           cmake --build build/${{ matrix.platform.name }} --parallel $(nproc)
           
           # Create build info
@@ -335,12 +345,26 @@ jobs:
           echo "Using board: ${{ matrix.platform.board }}"
           echo "Using config: ${{ matrix.platform.conf_file }}"
           
+          # Verify environment
+          echo "SDK_PATH: $SDK_PATH"
+          echo "ZEPHYR_BASE: $ZEPHYR_BASE"
+          echo "SDK exists: $(test -d "$SDK_PATH" && echo "yes" || echo "no")"
+          echo "Config exists: $(test -f "${{ matrix.platform.conf_file }}" && echo "yes" || echo "no")"
+          
           # Set board root for production builds
           if [ "${{ matrix.platform.name }}" = "production-legacy" ]; then
             export BOARD_ROOT="../boards"
+            echo "BOARD_ROOT set to: $BOARD_ROOT"
+          fi
+          
+          # Initialize west workspace if needed
+          if [ ! -f "west.yml" ] && [ ! -f "../west.yml" ] && [ ! -f "../../west.yml" ]; then
+            echo "No west.yml found, initializing minimal workspace..."
+            west init -l .
           fi
           
           # Build firmware using west
+          echo "Starting west build..."
           west build -b ${{ matrix.platform.board }} -p -- \
             -DCONF_FILE=${{ matrix.platform.conf_file }}
           

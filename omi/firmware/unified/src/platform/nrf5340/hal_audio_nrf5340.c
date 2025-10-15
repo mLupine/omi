@@ -10,20 +10,26 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
-/* Include existing production headers - these paths will be adjusted to existing code */
+/* Include existing production headers - disabled for initial builds */
+/* TODO: Re-enable when production integration is complete */
+/*
 #ifdef CONFIG_OMI_UNIFIED_BUILD
-/* When building unified firmware, include production headers */
 #include "../../../omi/src/lib/core/mic.h"
 #include "../../../omi/src/lib/core/config.h"
 #else
-/* When building standalone, provide minimal interface */
+*/
+/* Use minimal interface for now */
 #define MIC_BUFFER_SAMPLES 1600  /* From production config */
 typedef void (*mix_handler)(int16_t *buffer);
-extern int mic_init(mix_handler handler);
-extern int mic_start(void);
-extern int mic_stop(void);
-extern bool mic_is_running(void);
+
+/* Placeholder function declarations - TODO: integrate with production code */
+static int mic_init(mix_handler handler) { return 0; }
+static int mic_start(void) { return 0; }
+static int mic_stop(void) { return 0; }
+static bool mic_is_running(void) { return false; }
+/*
 #endif
+*/
 
 LOG_MODULE_REGISTER(hal_audio_nrf5340, CONFIG_LOG_DEFAULT_LEVEL);
 

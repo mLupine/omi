@@ -1,0 +1,104 @@
+{
+    "version": 2,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 20,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "omi-production-nrf5340",
+            "displayName": "Omi Production (nRF5340) - Unified Build",
+            "configuration": "Debug",
+            "hidden": false,
+            "description": "Production hardware build using unified HAL with minimal changes to existing code",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/omi-production-nrf5340",
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "YES",
+                "CMAKE_BUILD_TYPE": "Debug",
+                "BOARD": "omi/nrf5340/cpuapp",
+                "BOARD_ROOT": "${sourceDir}/../boards",
+                "CONF_FILE": "${sourceDir}/configs/omi_nrf5340_unified.conf",
+                "OMI_UNIFIED_BUILD": "ON",
+                "OMI_PLATFORM": "nrf5340"
+            }
+        },
+        {
+            "name": "devkit-v2-nrf52840",
+            "displayName": "DevKit v2 (nRF52840) - Unified Build", 
+            "configuration": "Debug",
+            "hidden": false,
+            "description": "DevKit v2 hardware build using unified HAL, upgraded to SDK v2.9.0",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/devkit-v2-nrf52840",
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "YES",
+                "CMAKE_BUILD_TYPE": "Debug",
+                "BOARD": "xiao_ble_sense",
+                "CONF_FILE": "${sourceDir}/configs/devkit_nrf52840_v290.conf",
+                "DTC_OVERLAY_FILE": "${sourceDir}/overlays/xiao_ble_sense_devkitv2_unified.overlay",
+                "OMI_UNIFIED_BUILD": "ON",
+                "OMI_PLATFORM": "nrf52840"
+            }
+        },
+        {
+            "name": "omi-production-legacy",
+            "displayName": "Omi Production (Legacy Build)",
+            "configuration": "Debug",
+            "hidden": false,
+            "description": "Legacy production build - unchanged from original",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/omi-production-legacy",
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "YES",
+                "CMAKE_BUILD_TYPE": "Debug",
+                "BOARD": "omi/nrf5340/cpuapp",
+                "BOARD_ROOT": "${sourceDir}/../boards",
+                "CONF_FILE": "${sourceDir}/../omi/omi.conf",
+                "CACHED_CONF_FILE": "${sourceDir}/../omi/omi.conf",
+                "OMI_LEGACY_BUILD": "ON"
+            }
+        },
+        {
+            "name": "devkit-v2-legacy",
+            "displayName": "DevKit v2 (Legacy Build)",
+            "configuration": "Debug", 
+            "hidden": false,
+            "description": "Legacy DevKit v2 build - unchanged from original",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/devkit-v2-legacy",
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "YES",
+                "CMAKE_BUILD_TYPE": "Debug",
+                "BOARD": "xiao_ble_sense",
+                "CONF_FILE": "${sourceDir}/../devkit/prj_xiao_ble_sense_devkitv2-adafruit.conf",
+                "CACHED_CONF_FILE": "${sourceDir}/../devkit/prj_xiao_ble_sense_devkitv2-adafruit.conf",
+                "DTC_OVERLAY_FILE": "${sourceDir}/../devkit/overlay/xiao_ble_sense_devkitv2-adafruit.overlay",
+                "OMI_LEGACY_BUILD": "ON"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "omi-production-nrf5340",
+            "configurePreset": "omi-production-nrf5340",
+            "displayName": "Build Production (Unified)"
+        },
+        {
+            "name": "devkit-v2-nrf52840", 
+            "configurePreset": "devkit-v2-nrf52840",
+            "displayName": "Build DevKit v2 (Unified)"
+        },
+        {
+            "name": "omi-production-legacy",
+            "configurePreset": "omi-production-legacy", 
+            "displayName": "Build Production (Legacy)"
+        },
+        {
+            "name": "devkit-v2-legacy",
+            "configurePreset": "devkit-v2-legacy",
+            "displayName": "Build DevKit v2 (Legacy)"
+        }
+    ]
+}

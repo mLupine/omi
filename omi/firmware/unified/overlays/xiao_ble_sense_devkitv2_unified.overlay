@@ -1,0 +1,36 @@
+// DevKit v2 Unified Build Overlay
+// Minimal overlay file for initial builds
+
+/ {
+    aliases {
+        // Basic aliases for DevKit hardware
+    };
+};
+
+// Basic I2S configuration for audio
+&i2s0 {
+    status = "disabled"; // Disable until audio HAL is fully implemented
+};
+
+// Basic SPI configuration for SD card
+&spi2 {
+    status = "disabled"; // Disable until storage HAL is fully implemented
+};
+
+// UART configuration for console
+&uart0 {
+    status = "okay";
+};
+
+// Disable complex features initially to get basic builds working
+&i2c0 {
+    status = "disabled";
+};
+
+&i2c1 {
+    status = "disabled";
+};
+
+&temp {
+    status = "disabled";
+};

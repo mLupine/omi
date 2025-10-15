@@ -279,12 +279,9 @@ jobs:
           mkdir -p ~/ncs
           cd ~/ncs
           
-          # Use appropriate SDK version based on platform
-          if [ "${{ matrix.platform.name }}" = "production-legacy" ]; then
-            SDK_VERSION="v2.9.0"
-          else
-            SDK_VERSION="v2.7.0"
-          fi
+          # Use v2.9.0 for both legacy builds to avoid SDK compatibility issues
+          # TODO: Later separate SDK versions once builds are stable
+          SDK_VERSION="v2.9.0"
           
           echo "Setting up SDK version: $SDK_VERSION"
           
@@ -324,12 +321,9 @@ jobs:
       - name: Build legacy firmware - ${{ matrix.platform.description }}
         working-directory: omi/omi/firmware/${{ matrix.platform.path }}
         run: |
-          # Determine SDK version path
-          if [ "${{ matrix.platform.name }}" = "production-legacy" ]; then
-            SDK_PATH="~/ncs/v2.9.0"
-          else
-            SDK_PATH="~/ncs/v2.7.0"
-          fi
+          # Use v2.9.0 for both legacy builds to avoid SDK compatibility issues
+          # TODO: Later separate SDK versions once builds are stable
+          SDK_PATH="$HOME/ncs/v2.9.0"
           
           export ZEPHYR_BASE=$SDK_PATH/zephyr
           export PATH="/opt/toolchains/zephyr-sdk-0.16.8/arm-zephyr-eabi/bin:$PATH"

@@ -1,0 +1,23 @@
+/**
+ * @file build_info.h
+ * @brief Build information for unified firmware
+ */
+
+#ifndef BUILD_INFO_H
+#define BUILD_INFO_H
+
+#define OMI_BUILD_PLATFORM "@OMI_PLATFORM@"
+#define OMI_BUILD_BOARD "@BOARD@"
+#define OMI_BUILD_TYPE "@CMAKE_BUILD_TYPE@"
+#define OMI_BUILD_TIMESTAMP "@CMAKE_BUILD_TIMESTAMP@"
+#define OMI_BUILD_UNIFIED 1
+
+#ifdef CONFIG_OMI_PLATFORM_NRF5340
+#define OMI_PLATFORM_NAME "Production nRF5340"
+#elif CONFIG_OMI_PLATFORM_NRF52840
+#define OMI_PLATFORM_NAME "DevKit v2 nRF52840"
+#else
+#define OMI_PLATFORM_NAME "Unknown"
+#endif
+
+#endif /* BUILD_INFO_H */

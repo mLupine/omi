@@ -1,0 +1,460 @@
+name: Firmware Build and Test
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'omi/firmware/**'
+      - '.github/workflows/firmware-build.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'omi/firmware/**'
+      - '.github/workflows/firmware-build.yml'
+
+jobs:
+  build-unified-firmware:
+    name: Build Unified Firmware
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - name: "production-nrf5340"
+            preset: "omi-production-nrf5340"
+            board: "omi/nrf5340/cpuapp"
+            description: "Production nRF5340 (Unified)"
+          - name: "devkit-v2-nrf52840"  
+            preset: "devkit-v2-nrf52840"
+            board: "xiao_ble_sense"
+            description: "DevKit v2 nRF52840 (Unified)"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          path: omi
+          fetch-depth: 0
+
+      - name: Cache nRF Connect SDK
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/ncs
+          key: ncs-2.9.0-${{ runner.os }}-${{ hashFiles('**/west.yml') }}
+          restore-keys: |
+            ncs-2.9.0-${{ runner.os }}-
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            ccache \
+            device-tree-compiler \
+            wget \
+            python3-dev \
+            python3-pip \
+            python3-setuptools \
+            python3-tk \
+            python3-wheel \
+            xz-utils \
+            file \
+            make \
+            gcc-multilib \
+            g++-multilib \
+            libsdl2-dev \
+            libc6-dev-i386
+
+      - name: Install West and Python dependencies
+        run: |
+          python3 -m pip install --user -U west
+          python3 -m pip install --user -U pip
+          python3 -m pip install --user \
+            cryptography \
+            intelhex \
+            ecdsa \
+            click \
+            cbor2 \
+            pyelftools \
+            pyyaml \
+            canopen \
+            packaging \
+            progress \
+            anytree \
+            pykwalify
+
+      - name: Add pip user base to PATH
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Download and setup nRF Connect SDK 2.9.0
+        run: |
+          mkdir -p ~/ncs
+          cd ~/ncs
+          
+          # Initialize workspace if not cached
+          if [ ! -d "v2.9.0" ]; then
+            echo "Initializing nRF Connect SDK workspace..."
+            west init -m https://github.com/nrfconnect/sdk-nrf --mr v2.9.0 v2.9.0
+            cd v2.9.0
+            west update
+            west zephyr-export
+          else
+            echo "Using cached nRF Connect SDK workspace"
+            cd v2.9.0
+            west update --narrow
+          fi
+          
+          # Install Python dependencies for the SDK
+          python3 -m pip install --user -r zephyr/scripts/requirements.txt
+          python3 -m pip install --user -r nrf/scripts/requirements.txt
+          python3 -m pip install --user -r bootloader/mcuboot/scripts/requirements.txt
+
+      - name: Download and install nRF Command Line Tools
+        run: |
+          cd /tmp
+          wget -q https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-24-2/nrf-command-line-tools_10.24.2_amd64.deb
+          sudo dpkg -i nrf-command-line-tools_10.24.2_amd64.deb || sudo apt-get install -f -y
+
+      - name: Setup Zephyr environment
+        run: |
+          cd ~/ncs/v2.9.0
+          source zephyr/zephyr-env.sh
+          echo "ZEPHYR_BASE=$PWD/zephyr" >> $GITHUB_ENV
+          echo "ZEPHYR_SDK_INSTALL_DIR=/opt/toolchains" >> $GITHUB_ENV
+
+      - name: Download and install Zephyr SDK
+        run: |
+          cd /tmp
+          wget -q https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.16.8/zephyr-sdk-0.16.8_linux-x86_64_minimal.tar.xz
+          tar xf zephyr-sdk-0.16.8_linux-x86_64_minimal.tar.xz
+          sudo mkdir -p /opt/toolchains
+          sudo mv zephyr-sdk-0.16.8 /opt/toolchains/
+          cd /opt/toolchains/zephyr-sdk-0.16.8
+          sudo ./setup.sh -c -h -t arm-zephyr-eabi
+
+      - name: Build unified firmware - ${{ matrix.platform.description }}
+        working-directory: omi/omi/firmware/unified
+        run: |
+          export ZEPHYR_BASE=$HOME/ncs/v2.9.0/zephyr
+          export PATH="/opt/toolchains/zephyr-sdk-0.16.8/arm-zephyr-eabi/bin:$PATH"
+          
+          # Source the Zephyr environment
+          source $HOME/ncs/v2.9.0/zephyr/zephyr-env.sh
+          
+          echo "Building ${{ matrix.platform.description }}..."
+          echo "Using preset: ${{ matrix.platform.preset }}"
+          
+          # Verify Zephyr environment
+          echo "ZEPHYR_BASE: $ZEPHYR_BASE"
+          echo "Zephyr exists: $(test -d "$ZEPHYR_BASE" && echo "yes" || echo "no")"
+          
+          # List available presets for debugging
+          echo "Available CMake presets:"
+          cmake --list-presets
+          
+          # Configure build
+          echo "Configuring build..."
+          cmake --preset ${{ matrix.platform.preset }}
+          
+          # Build firmware
+          echo "Building firmware..."
+          cmake --build build/${{ matrix.platform.name }} --parallel $(nproc)
+          
+          # Create build info
+          echo "Build completed at: $(date)" > build/${{ matrix.platform.name }}/build_info.txt
+          echo "Platform: ${{ matrix.platform.description }}" >> build/${{ matrix.platform.name }}/build_info.txt
+          echo "Board: ${{ matrix.platform.board }}" >> build/${{ matrix.platform.name }}/build_info.txt
+          echo "Commit: ${{ github.sha }}" >> build/${{ matrix.platform.name }}/build_info.txt
+          echo "Branch: ${{ github.ref_name }}" >> build/${{ matrix.platform.name }}/build_info.txt
+
+      - name: Collect build artifacts - ${{ matrix.platform.description }}
+        working-directory: omi/omi/firmware/unified
+        run: |
+          mkdir -p artifacts/${{ matrix.platform.name }}
+          
+          # Copy firmware binaries
+          if [ -d "build/${{ matrix.platform.name }}" ]; then
+            # Look for common firmware file extensions
+            find build/${{ matrix.platform.name }} -name "*.hex" -o -name "*.bin" -o -name "*.elf" -o -name "*.dfu" | while read file; do
+              echo "Found firmware file: $file"
+              cp "$file" artifacts/${{ matrix.platform.name }}/
+            done
+            
+            # Copy build info
+            cp build/${{ matrix.platform.name }}/build_info.txt artifacts/${{ matrix.platform.name }}/
+            
+            # Copy build log if exists
+            if [ -f "build/${{ matrix.platform.name }}/CMakeCache.txt" ]; then
+              cp build/${{ matrix.platform.name }}/CMakeCache.txt artifacts/${{ matrix.platform.name }}/
+            fi
+          fi
+          
+          # List collected artifacts
+          echo "Collected artifacts for ${{ matrix.platform.name }}:"
+          ls -la artifacts/${{ matrix.platform.name }}/ || echo "No artifacts found"
+
+      - name: Upload firmware artifacts - ${{ matrix.platform.description }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.platform.name }}-${{ github.sha }}
+          path: omi/omi/firmware/unified/artifacts/${{ matrix.platform.name }}/
+          retention-days: 30
+          if-no-files-found: warn
+
+  build-legacy-firmware:
+    name: Build Legacy Firmware (Comparison)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false  
+      matrix:
+        platform:
+          - name: "production-legacy"
+            path: "omi"
+            board: "omi/nrf5340/cpuapp"
+            description: "Production nRF5340 (Legacy)"
+            conf_file: "omi.conf"
+          - name: "devkit-v2-legacy"
+            path: "devkit"
+            board: "xiao_ble_sense"
+            description: "DevKit v2 nRF52840 (Legacy)"
+            conf_file: "prj_xiao_ble_sense_devkitv2-adafruit.conf"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          path: omi
+          fetch-depth: 0
+
+      - name: Cache nRF Connect SDK
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/ncs
+          key: ncs-legacy-${{ runner.os }}-${{ hashFiles('**/west.yml') }}
+          restore-keys: |
+            ncs-legacy-${{ runner.os }}-
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            ccache \
+            device-tree-compiler \
+            wget \
+            python3-dev \
+            python3-pip \
+            python3-setuptools \
+            python3-tk \
+            python3-wheel \
+            xz-utils \
+            file \
+            make \
+            gcc-multilib \
+            g++-multilib \
+            libsdl2-dev \
+            libc6-dev-i386
+
+      - name: Install West and Python dependencies
+        run: |
+          python3 -m pip install --user -U west
+          python3 -m pip install --user -U pip
+          python3 -m pip install --user \
+            cryptography \
+            intelhex \
+            ecdsa \
+            click \
+            cbor2 \
+            pyelftools \
+            pyyaml \
+            canopen \
+            packaging \
+            progress \
+            anytree \
+            pykwalify
+
+      - name: Add pip user base to PATH
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Setup SDK for legacy builds
+        run: |
+          mkdir -p ~/ncs
+          cd ~/ncs
+          
+          # Use v2.9.0 for both legacy builds to avoid SDK compatibility issues
+          # TODO: Later separate SDK versions once builds are stable
+          SDK_VERSION="v2.9.0"
+          
+          echo "Setting up SDK version: $SDK_VERSION"
+          
+          if [ ! -d "$SDK_VERSION" ]; then
+            echo "Initializing nRF Connect SDK workspace..."
+            west init -m https://github.com/nrfconnect/sdk-nrf --mr $SDK_VERSION $SDK_VERSION
+            cd $SDK_VERSION
+            west update
+            west zephyr-export
+          else
+            echo "Using cached nRF Connect SDK workspace"
+            cd $SDK_VERSION
+            west update --narrow
+          fi
+          
+          # Install Python dependencies for the SDK
+          python3 -m pip install --user -r zephyr/scripts/requirements.txt
+          python3 -m pip install --user -r nrf/scripts/requirements.txt
+          python3 -m pip install --user -r bootloader/mcuboot/scripts/requirements.txt
+
+      - name: Download and install nRF Command Line Tools
+        run: |
+          cd /tmp
+          wget -q https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-24-2/nrf-command-line-tools_10.24.2_amd64.deb
+          sudo dpkg -i nrf-command-line-tools_10.24.2_amd64.deb || sudo apt-get install -f -y
+
+      - name: Download and install Zephyr SDK
+        run: |
+          cd /tmp
+          wget -q https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.16.8/zephyr-sdk-0.16.8_linux-x86_64_minimal.tar.xz
+          tar xf zephyr-sdk-0.16.8_linux-x86_64_minimal.tar.xz
+          sudo mkdir -p /opt/toolchains
+          sudo mv zephyr-sdk-0.16.8 /opt/toolchains/
+          cd /opt/toolchains/zephyr-sdk-0.16.8
+          sudo ./setup.sh -c -h -t arm-zephyr-eabi
+
+      - name: Build legacy firmware - ${{ matrix.platform.description }}
+        working-directory: omi/omi/firmware/${{ matrix.platform.path }}
+        run: |
+          # Use v2.9.0 for both legacy builds to avoid SDK compatibility issues
+          # TODO: Later separate SDK versions once builds are stable
+          SDK_PATH="$HOME/ncs/v2.9.0"
+          
+          export ZEPHYR_BASE=$SDK_PATH/zephyr
+          export PATH="/opt/toolchains/zephyr-sdk-0.16.8/arm-zephyr-eabi/bin:$PATH"
+          
+          # Source the Zephyr environment
+          source $SDK_PATH/zephyr/zephyr-env.sh
+          
+          echo "Building ${{ matrix.platform.description }}..."
+          echo "Using board: ${{ matrix.platform.board }}"
+          echo "Using config: ${{ matrix.platform.conf_file }}"
+          
+          # Verify environment
+          echo "SDK_PATH: $SDK_PATH"
+          echo "ZEPHYR_BASE: $ZEPHYR_BASE"
+          echo "SDK exists: $(test -d "$SDK_PATH" && echo "yes" || echo "no")"
+          echo "Config exists: $(test -f "${{ matrix.platform.conf_file }}" && echo "yes" || echo "no")"
+          
+          # Set board root for production builds
+          if [ "${{ matrix.platform.name }}" = "production-legacy" ]; then
+            export BOARD_ROOT="../boards"
+            echo "BOARD_ROOT set to: $BOARD_ROOT"
+          fi
+          
+          # Initialize west workspace if needed
+          if [ ! -f "west.yml" ] && [ ! -f "../west.yml" ] && [ ! -f "../../west.yml" ]; then
+            echo "No west.yml found, initializing minimal workspace..."
+            west init -l .
+          fi
+          
+          # Build firmware using west
+          echo "Starting west build..."
+          west build -b ${{ matrix.platform.board }} -p -- \
+            -DCONF_FILE=${{ matrix.platform.conf_file }}
+          
+          # Create build info
+          echo "Build completed at: $(date)" > build/build_info.txt
+          echo "Platform: ${{ matrix.platform.description }}" >> build/build_info.txt
+          echo "Board: ${{ matrix.platform.board }}" >> build/build_info.txt
+          echo "Config: ${{ matrix.platform.conf_file }}" >> build/build_info.txt
+          echo "Commit: ${{ github.sha }}" >> build/build_info.txt
+          echo "Branch: ${{ github.ref_name }}" >> build/build_info.txt
+
+      - name: Collect build artifacts - ${{ matrix.platform.description }}
+        working-directory: omi/omi/firmware/${{ matrix.platform.path }}
+        run: |
+          mkdir -p artifacts/${{ matrix.platform.name }}
+          
+          # Copy firmware binaries
+          if [ -d "build" ]; then
+            # Look for common firmware file extensions
+            find build -name "*.hex" -o -name "*.bin" -o -name "*.elf" -o -name "*.dfu" | while read file; do
+              echo "Found firmware file: $file"
+              cp "$file" artifacts/${{ matrix.platform.name }}/
+            done
+            
+            # Copy build info
+            cp build/build_info.txt artifacts/${{ matrix.platform.name }}/
+            
+            # Copy build log if exists
+            if [ -f "build/CMakeCache.txt" ]; then
+              cp build/CMakeCache.txt artifacts/${{ matrix.platform.name }}/
+            fi
+          fi
+          
+          # List collected artifacts
+          echo "Collected artifacts for ${{ matrix.platform.name }}:"
+          ls -la artifacts/${{ matrix.platform.name }}/ || echo "No artifacts found"
+
+      - name: Upload firmware artifacts - ${{ matrix.platform.description }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.platform.name }}-${{ github.sha }}
+          path: omi/omi/firmware/${{ matrix.platform.path }}/artifacts/${{ matrix.platform.name }}/
+          retention-days: 30
+          if-no-files-found: warn
+
+  create-release-summary:
+    name: Create Build Summary
+    needs: [build-unified-firmware, build-legacy-firmware]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Create build summary
+        run: |
+          echo "# Firmware Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Build Time:** $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "## Build Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Check build results
+          if [ "${{ needs.build-unified-firmware.result }}" = "success" ]; then
+            echo "✅ **Unified Firmware Builds**: SUCCESS" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Unified Firmware Builds**: FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.build-legacy-firmware.result }}" = "success" ]; then
+            echo "✅ **Legacy Firmware Builds**: SUCCESS" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Legacy Firmware Builds**: FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Available Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Build artifacts are available for download for 30 days:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- 🏭 **Production nRF5340 (Unified)**: firmware-production-nrf5340-${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- 🧪 **DevKit v2 nRF52840 (Unified)**: firmware-devkit-v2-nrf52840-${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- 📦 **Production nRF5340 (Legacy)**: firmware-production-legacy-${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- 📦 **DevKit v2 nRF52840 (Legacy)**: firmware-devkit-v2-legacy-${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Testing Instructions" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "1. Download the appropriate firmware artifact" >> $GITHUB_STEP_SUMMARY
+          echo "2. Extract the files" >> $GITHUB_STEP_SUMMARY
+          echo "3. Flash using nRF Connect or compatible tools" >> $GITHUB_STEP_SUMMARY
+          echo "4. Test functionality and report any issues" >> $GITHUB_STEP_SUMMARY

@@ -27,41 +27,24 @@ jobs:
 
       - name: Set up workspace
         run: |
-          pwd
-          ls -la
-          ls -la omi/
-          mkdir -p /workdir/firmware
-          cp -r omi/firmware/* /workdir/firmware/
-          cd /workdir/firmware
-          mkdir -p v2.9.0
-
-      - name: Install dependencies
-        run: |
-          apt-get update && apt-get install -y python3-pip git
-          python3 -m pip install west
-          which west
-
-      - name: Initialize West workspace
-        run: |
-          rm -rf /workdir/.west
-          cd /workdir/firmware/v2.9.0
-          west init -m https://github.com/nrfconnect/sdk-nrf --mr v2.9.0
-          west update --narrow --fetch-opt=--filter=tree:0
+          cd /workdir
+          west update
+          cp -r $GITHUB_WORKSPACE/omi/firmware/* /workdir/
 
       - name: Prepare production configuration
         run: |
-          cd /workdir/firmware/omi
+          cd /workdir/omi
           cp omi.conf prj.conf
 
       - name: Build production firmware
         run: |
-          cd /workdir/firmware/v2.9.0
-          west build -b omi/nrf5340/cpuapp ../omi --sysbuild -- -DBOARD_ROOT=/workdir/firmware
+          cd /workdir
+          west build -b omi/nrf5340/cpuapp omi --sysbuild -- -DBOARD_ROOT=/workdir
 
       - name: Prepare production artifacts
         run: |
           mkdir -p /workdir/artifacts/production
-          cd /workdir/firmware/v2.9.0/build
+          cd /workdir/build
 
           # Copy main build outputs
           cp dfu_application.zip /workdir/artifacts/production/ || echo "Warning: dfu_application.zip not found"
@@ -95,36 +78,19 @@ jobs:
 
       - name: Set up workspace
         run: |
-          pwd
-          ls -la
-          ls -la omi/
-          mkdir -p /workdir/firmware
-          cp -r omi/firmware/* /workdir/firmware/
-          cd /workdir/firmware
-          mkdir -p v2.9.0
-
-      - name: Install dependencies
-        run: |
-          apt-get update && apt-get install -y python3-pip git
-          python3 -m pip install west
-          which west
-
-      - name: Initialize West workspace
-        run: |
-          rm -rf /workdir/.west
-          cd /workdir/firmware/v2.9.0
-          west init -m https://github.com/nrfconnect/sdk-nrf --mr v2.9.0
-          west update --narrow --fetch-opt=--filter=tree:0
+          cd /workdir
+          west update
+          cp -r $GITHUB_WORKSPACE/omi/firmware/* /workdir/
 
       - name: Build DevKit v2 firmware
         run: |
-          cd /workdir/firmware/v2.9.0
-          west build -b seeed_xiao_nrf52840_sense ../devkit -- -DCONF_FILE=prj_xiao_ble_sense_devkitv2-adafruit.conf
+          cd /workdir
+          west build -b seeed_xiao_nrf52840_sense devkit -- -DCONF_FILE=prj_xiao_ble_sense_devkitv2-adafruit.conf
 
       - name: Prepare DevKit artifacts
         run: |
           mkdir -p /workdir/artifacts/devkit-v2
-          cd /workdir/firmware/v2.9.0/build/zephyr
+          cd /workdir/build/zephyr
 
           # Copy build outputs
           cp zephyr.hex /workdir/artifacts/devkit-v2/ || echo "Warning: zephyr.hex not found"

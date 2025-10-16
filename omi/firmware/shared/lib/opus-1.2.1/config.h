@@ -11,7 +11,7 @@
 //  <1=>CELT Only
 //  <2=>SILK Only
 /**@brief Opus Options: Mode */
-// #define CONFIG_OPUS_MODE CONFIG_OPUS_MODE_CELT
+#define CONFIG_OPUS_MODE CONFIG_OPUS_MODE_CELT
 
 // <o> Bit Rate
 // <i> VBR - Variable Bit Rate is fully controlled by the codec.

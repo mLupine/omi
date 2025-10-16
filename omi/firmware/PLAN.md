@@ -15,8 +15,8 @@
 | Phase | Status | Completion Date | Notes |
 |-------|--------|-----------------|-------|
 | **Phase 1: CI/CD Foundation** | ✅ **COMPLETE** | 2025-10-16 | GitHub Actions workflow created at `.github/workflows/firmware-build.yml`. Builds both production (nRF5340) and DevKit v2 (nRF52840) targets on every push to main. Artifacts uploaded with 30-day retention. |
-| **Phase 2: Unify Opus Codec** | ⏳ Pending | - | Not started |
-| **Phase 3: DevKit Structural Refactor** | ⏳ Pending | - | Not started |
+| **Phase 2: Unify Opus Codec** | ✅ **COMPLETE** | 2025-10-16 | Created `shared/lib/opus-1.2.1/` with unified Opus codec. Updated both CMakeLists.txt files. DevKit file reduced from 187 lines to 30 lines (84% reduction). Both firmwares now use identical Opus 1.2.1 implementation. |
+| **Phase 3: DevKit Structural Refactor** | 🔄 **IN PROGRESS** | - | Starting refactor to import from production core |
 | **Phase 4: Harmonize Storage & Transport** | ⏳ Pending | - | Not started |
 | **Phase 5: Testing & Validation** | ⏳ Pending | - | Not started |
 | **Phase 6: Documentation & Polish** | ⏳ Pending | - | Not started |
@@ -39,6 +39,17 @@
 - Nordic's `nordicplayground/nrfconnect-sdk:v2.9-branch` container lacks pip/west by default
 - Solution: Install via `apt-get install python3-pip git` then `pip install --break-system-packages west`
 - West SDK download takes ~3-5 minutes (~1.5GB), builds take ~2-3 minutes each
+
+**2025-10-16 - Phase 2 Complete: Unify Opus Codec**
+- ✅ Created `shared/lib/opus-1.2.1/` directory with complete Opus 1.2.1 codec
+- ✅ Copied Opus from production (195 files, well-structured with CMakeLists.txt)
+- ✅ Updated `omi/CMakeLists.txt`: Changed path from `src/lib/core/lib/opus-1.2.1/` to `../shared/lib/opus-1.2.1/`
+- ✅ Updated `devkit/CMakeLists.txt`: Replaced 150+ individual Opus source file listings with `add_subdirectory` call
+  - File reduced from 187 lines to 30 lines (84% reduction!)
+  - Removed redundant CMAKE_C_FLAGS (now handled by shared Opus CMakeLists.txt)
+- ✅ Both firmwares now use identical Opus implementation
+- 🎯 **Impact**: Zero production functionality change, major DevKit simplification
+- 🎯 **Next Steps**: Phase 3 - Refactor DevKit to import codec.c, transport.c, storage.c, etc. from production core
 
 ---
 

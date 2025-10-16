@@ -14,132 +14,111 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-production:
-    name: Production (nRF5340)
-    runs-on: ubuntu-latest
-    container:
-      image: nordicplayground/nrfconnect-sdk:v2.9-branch
-      options: --user root
+  build:
+    name: Build Firmware
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          path: project
 
-      - name: Install dependencies
+      - name: Install system dependencies
         run: |
-          apt-get update && apt-get install -y python3-pip git cmake ninja-build
-          python3 -m pip install west
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            git cmake ninja-build gperf \
+            ccache dfu-util device-tree-compiler wget \
+            python3-dev python3-pip python3-setuptools python3-tk python3-wheel \
+            xz-utils file make gcc gcc-multilib g++-multilib libsdl2-dev libmagic1
 
-      - name: Set up workspace
+      - name: Install West
         run: |
-          cp -r $GITHUB_WORKSPACE/omi/firmware/* /workdir/
+          pip3 install --user west
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Prepare production configuration
+      - name: Initialize nRF Connect SDK workspace
         run: |
-          cd /workdir/omi
+          west init -m https://github.com/nrfconnect/sdk-nrf --mr v2.9.0 ncs
+          cd ncs
+          west update --narrow -o=--depth=1
+
+      - name: Install Zephyr SDK
+        run: |
+          cd ~
+          wget https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.17.0/zephyr-sdk-0.17.0_linux-x86_64.tar.xz
+          tar xf zephyr-sdk-0.17.0_linux-x86_64.tar.xz
+          cd zephyr-sdk-0.17.0
+          ./setup.sh -t all -h -c
+
+      - name: Install Python dependencies
+        run: |
+          pip3 install --user -r ncs/zephyr/scripts/requirements.txt
+          pip3 install --user -r ncs/nrf/scripts/requirements.txt
+          pip3 install --user -r ncs/bootloader/mcuboot/scripts/requirements.txt
+
+      - name: Copy firmware to workspace
+        run: |
+          cp -r project/omi/firmware/* ncs/
+
+      - name: Build Production firmware (nRF5340)
+        run: |
+          cd ncs/omi
           cp omi.conf prj.conf
+          cd ..
+          west build -b omi/nrf5340/cpuapp omi --sysbuild --build-dir build-production -- -DBOARD_ROOT=$PWD
 
-      - name: Build production firmware
+      - name: Build DevKit v2 firmware (nRF52840)
         run: |
-          cd /workdir
-          nrfutil toolchain-manager launch --ncs-version v2.9.0 -- west build -b omi/nrf5340/cpuapp omi --sysbuild -- -DBOARD_ROOT=/workdir
+          cd ncs
+          west build -b xiao_ble/nrf52840/sense devkit --build-dir build-devkit -- -DCONF_FILE=prj_xiao_ble_sense_devkitv2-adafruit.conf
 
-      - name: Prepare production artifacts
+      - name: Prepare artifacts
         run: |
-          mkdir -p /workdir/artifacts/production
-          cd /workdir/build
+          mkdir -p artifacts/production artifacts/devkit-v2
 
-          # Copy main build outputs
-          cp dfu_application.zip /workdir/artifacts/production/ || echo "Warning: dfu_application.zip not found"
-          cp merged.hex /workdir/artifacts/production/ || echo "Warning: merged.hex not found"
-          cp omi/zephyr/zephyr.elf /workdir/artifacts/production/ || echo "Warning: zephyr.elf not found"
-          cp omi/zephyr/zephyr.bin /workdir/artifacts/production/ || echo "Warning: zephyr.bin not found"
+          # Production artifacts
+          cd ncs/build-production
+          cp dfu_application.zip ../../artifacts/production/ 2>/dev/null || echo "No dfu_application.zip"
+          cp merged.hex ../../artifacts/production/ 2>/dev/null || echo "No merged.hex"
+          cp omi/zephyr/zephyr.elf ../../artifacts/production/ 2>/dev/null || echo "No zephyr.elf"
+          cp omi/zephyr/zephyr.bin ../../artifacts/production/ 2>/dev/null || echo "No zephyr.bin"
 
-          # Create build info
-          echo "Build Date: $(date -u +%Y-%m-%dT%H:%M:%SZ)" > /workdir/artifacts/production/build_info.txt
-          echo "Commit: ${{ github.sha }}" >> /workdir/artifacts/production/build_info.txt
-          echo "Branch: ${{ github.ref_name }}" >> /workdir/artifacts/production/build_info.txt
+          # DevKit artifacts
+          cd ../build-devkit/zephyr
+          cp zephyr.hex ../../../artifacts/devkit-v2/ 2>/dev/null || echo "No zephyr.hex"
+          cp zephyr.elf ../../../artifacts/devkit-v2/ 2>/dev/null || echo "No zephyr.elf"
+          cp zephyr.bin ../../../artifacts/devkit-v2/ 2>/dev/null || echo "No zephyr.bin"
 
-      - name: Upload production artifacts
+          # Build info
+          cd ../../..
+          echo "Build Date: $(date -u +%Y-%m-%dT%H:%M:%SZ)" > artifacts/production/build_info.txt
+          echo "Commit: ${{ github.sha }}" >> artifacts/production/build_info.txt
+          echo "Branch: ${{ github.ref_name }}" >> artifacts/production/build_info.txt
+
+          cp artifacts/production/build_info.txt artifacts/devkit-v2/build_info.txt
+
+      - name: Upload Production artifacts
         uses: actions/upload-artifact@v4
         with:
           name: omi-production-${{ github.sha }}
-          path: /workdir/artifacts/production/
+          path: artifacts/production/
           retention-days: 30
-          if-no-files-found: error
-
-  build-devkit:
-    name: DevKit v2 (nRF52840)
-    runs-on: ubuntu-latest
-    container:
-      image: nordicplayground/nrfconnect-sdk:v2.9-branch
-      options: --user root
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          apt-get update && apt-get install -y python3-pip git cmake ninja-build
-          python3 -m pip install west
-
-      - name: Set up workspace
-        run: |
-          cp -r $GITHUB_WORKSPACE/omi/firmware/* /workdir/
-
-      - name: Build DevKit v2 firmware
-        run: |
-          cd /workdir
-          nrfutil toolchain-manager launch --ncs-version v2.9.0 -- west build -b "xiao_ble/nrf52840/sense" devkit -- -DCONF_FILE=prj_xiao_ble_sense_devkitv2-adafruit.conf
-
-      - name: Prepare DevKit artifacts
-        run: |
-          mkdir -p /workdir/artifacts/devkit-v2
-          cd /workdir/build/zephyr
-
-          # Copy build outputs
-          cp zephyr.hex /workdir/artifacts/devkit-v2/ || echo "Warning: zephyr.hex not found"
-          cp zephyr.elf /workdir/artifacts/devkit-v2/ || echo "Warning: zephyr.elf not found"
-          cp zephyr.bin /workdir/artifacts/devkit-v2/ || echo "Warning: zephyr.bin not found"
-
-          # Create build info
-          echo "Build Date: $(date -u +%Y-%m-%dT%H:%M:%SZ)" > /workdir/artifacts/devkit-v2/build_info.txt
-          echo "Commit: ${{ github.sha }}" >> /workdir/artifacts/devkit-v2/build_info.txt
-          echo "Branch: ${{ github.ref_name }}" >> /workdir/artifacts/devkit-v2/build_info.txt
 
       - name: Upload DevKit v2 artifacts
         uses: actions/upload-artifact@v4
         with:
           name: omi-devkit-v2-${{ github.sha }}
-          path: /workdir/artifacts/devkit-v2/
+          path: artifacts/devkit-v2/
           retention-days: 30
-          if-no-files-found: error
 
-  build-summary:
-    name: Build Summary
-    runs-on: ubuntu-latest
-    needs: [build-production, build-devkit]
-    if: always()
-
-    steps:
-      - name: Check build results
+      - name: Build Summary
+        if: always()
         run: |
           echo "### Firmware Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Target | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|--------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Production (nRF5340) | ${{ needs.build-production.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| DevKit v2 (nRF52840) | ${{ needs.build-devkit.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "**Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
-
-          if [ "${{ needs.build-production.result }}" = "success" ] && [ "${{ needs.build-devkit.result }}" = "success" ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "✅ All firmware builds completed successfully!" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "❌ Some builds failed. Check the logs above." >> $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Firmware builds completed!" >> $GITHUB_STEP_SUMMARY

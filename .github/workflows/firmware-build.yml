@@ -43,6 +43,7 @@ jobs:
 
       - name: Initialize West workspace
         run: |
+          rm -rf /workdir/.west
           cd /workdir/firmware/v2.9.0
           west init -m https://github.com/nrfconnect/sdk-nrf --mr v2.9.0
           west update --narrow --fetch-opt=--filter=tree:0
@@ -110,6 +111,7 @@ jobs:
 
       - name: Initialize West workspace
         run: |
+          rm -rf /workdir/.west
           cd /workdir/firmware/v2.9.0
           west init -m https://github.com/nrfconnect/sdk-nrf --mr v2.9.0
           west update --narrow --fetch-opt=--filter=tree:0

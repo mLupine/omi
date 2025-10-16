@@ -14,12 +14,12 @@
 
 | Phase | Status | Completion Date | Notes |
 |-------|--------|-----------------|-------|
-| **Phase 1: CI/CD Foundation** | ✅ **COMPLETE** | 2025-10-16 | GitHub Actions workflow created at `.github/workflows/firmware-build.yml`. Builds both production (nRF5340) and DevKit v2 (nRF52840) targets on every push to main. Artifacts uploaded with 30-day retention. |
+| **Phase 1: CI/CD Foundation** | ✅ **COMPLETE** | 2025-10-16 | GitHub Actions workflow created at `.github/workflows/firmware-build.yml`. Builds both production (nRF5340) and DevKit v2 (nRF52840) targets. Extensive fixes applied for nRF Connect SDK v2.9 compatibility. |
 | **Phase 2: Unify Opus Codec** | ✅ **COMPLETE** | 2025-10-16 | Created `shared/lib/opus-1.2.1/` with unified Opus codec. Updated both CMakeLists.txt files. DevKit file reduced from 187 lines to 30 lines (84% reduction). Both firmwares now use identical Opus 1.2.1 implementation. |
-| **Phase 3: DevKit Structural Refactor** | 🔄 **IN PROGRESS** | 2025-10-16 | codec.c imported from production. button.c and storage.c require header compatibility layer (deferred to Phase 4) |
-| **Phase 4: Harmonize Storage & Transport** | ⏳ Pending | - | Not started |
-| **Phase 5: Testing & Validation** | ⏳ Pending | - | Not started |
-| **Phase 6: Documentation & Polish** | ⏳ Pending | - | Not started |
+| **Phase 3: DevKit Structural Refactor** | 🔄 **IN PROGRESS** | - | codec.c imported from production. CI fixes ongoing for nRF SDK v2.9 compatibility. button.c and storage.c deferred to Phase 4. |
+| **Phase 4: Harmonize Storage & Transport** | ⏳ Pending | - | Blocked by Phase 3 completion |
+| **Phase 5: Testing & Validation** | ⏳ Pending | - | Blocked by Phase 3-4 completion |
+| **Phase 6: Documentation & Polish** | ⏳ Pending | - | Blocked by Phase 3-5 completion |
 
 ### Latest Updates
 
@@ -70,7 +70,32 @@
   - DevKit is simpler and older
   - **Decision**: Keep separate for now, harmonize in Phase 4 with #ifdef guards per original plan
 - 🎯 **Impact**: Incremental progress - codec.c unified, other files need compatibility work
-- 🎯 **Next Steps**: Phase 4 - Create header compatibility layer, harmonize APIs, then import button.c and storage.c
+- 🎯 **Next Steps**: Fix CI build issues, then Phase 4 - Create header compatibility layer, harmonize APIs, then import button.c and storage.c
+
+**2025-10-16 - CI/CD Fixes for nRF Connect SDK v2.9 Compatibility**
+- 🔧 **Board Definition Update**: Changed from `seeed_xiao_nrf52840_sense` to `xiao_ble/nrf52840/sense` (new format in SDK v2.9)
+  - Updated CMakeLists.txt line 2
+  - Updated GitHub Actions workflow build command
+- 🔧 **Workflow Architecture**: Replaced Docker container approach with direct installation
+  - Uses ubuntu-22.04 runner with manual SDK and toolchain installation
+  - Caches nRF Connect SDK v2.9 and Zephyr SDK 0.17.0 for faster builds
+  - Installs dependencies: west, cmake, ninja-build, device-tree-compiler, python packages
+- 🔧 **Codec Fixes**: Fixed OPUS_ENCODER_SIZE redefinition errors (omi/firmware/omi/src/lib/core/codec.c:21)
+  - Added `#ifndef OPUS_ENCODER_SIZE` guard to prevent redefinition
+  - Opus library already defines this value
+- 🔧 **SD Card Fixes**: Added forward declaration for `get_file_contents` in sdcard.c
+  - Function was used before declaration at line 101
+- 🔧 **PDM Microphone Driver**: Extensive fixes for nRF52840 PDM configuration
+  - Updated mic.c to use instance-based PDM API (`nrfx_pdm_t` struct)
+  - Added PDM devicetree overlay at `overlay/xiao_ble_sense_devkitv2-adafruit.overlay`
+  - Configured pinctrl with both "default" and "sleep" states (CLK: P1.00, DIN: P0.16)
+  - Explicitly specified overlay file in workflow: `-DDTC_OVERLAY_FILE=overlay/xiao_ble_sense_devkitv2-adafruit.overlay`
+  - Explicitly enabled PDM driver in Kconfig: `CONFIG_NRFX_PDM=y`
+- 🔧 **Build Configuration**: Added button.c to DevKit CMakeLists.txt sources
+- 🔄 **Current Status**: Production firmware builds successfully. DevKit firmware build fixes in progress (PDM driver linker errors being resolved)
+- 📝 **Remaining Issues**:
+  - DevKit: Resolve PDM driver linker errors for `nrfx_pdm_buffer_set`, `nrfx_pdm_init`, `nrfx_pdm_start`, `nrfx_pdm_0_irq_handler`
+  - DevKit: Potential SPI2 device reference error in sdcard.c:426
 
 ---
 

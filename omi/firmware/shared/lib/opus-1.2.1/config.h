@@ -2,8 +2,6 @@
 #define CONFIG_OPUS_MODE_SILK                   (1 << 1)
 #define CONFIG_OPUS_MODE_HYBRID                 (CONFIG_OPUS_MODE_CELT | CONFIG_OPUS_MODE_SILK)
 
-#include "../../config.h"
-
 // <h> Opus Options
 // <o> Mode
 // <i> SILK mode is specifically dedicated for voice but requires more CPU and memory resources than CELT.

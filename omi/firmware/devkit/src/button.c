@@ -22,7 +22,7 @@
 
 LOG_MODULE_REGISTER(button, CONFIG_LOG_DEFAULT_LEVEL);
 
-extern bool is_off;
+bool is_off = false;
 
 static void button_ccc_config_changed_handler(const struct bt_gatt_attr *attr, uint16_t value);
 static ssize_t button_data_read_characteristic(struct bt_conn *conn,

@@ -51,6 +51,10 @@ int init_haptic_pin();
  */
 void play_haptic_milli(uint32_t duration);
 
+static inline void haptic_off(void) {
+}
+
+
 void speaker_off();
 
 void register_speaker_service();

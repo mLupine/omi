@@ -20,4 +20,10 @@ void set_led_red(bool on);
 void set_led_green(bool on);
 void set_led_blue(bool on);
 
+static inline void led_off(void) {
+    set_led_red(false);
+    set_led_green(false);
+    set_led_blue(false);
+}
+
 #endif

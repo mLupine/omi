@@ -25,4 +25,7 @@ int bt_on();
 int bt_off();
 
 void accel_off();
+
+#define transport_off bt_off
+
 #endif

@@ -16,10 +16,10 @@
 |-------|--------|-----------------|-------|
 | **Phase 1: CI/CD Foundation** | ✅ **COMPLETE** | 2025-10-16 | GitHub Actions workflow created at `.github/workflows/firmware-build.yml`. Builds both production (nRF5340) and DevKit v2 (nRF52840) targets. Extensive fixes applied for nRF Connect SDK v2.9 compatibility. |
 | **Phase 2: Unify Opus Codec** | ✅ **COMPLETE** | 2025-10-16 | Created `shared/lib/opus-1.2.1/` with unified Opus codec. Updated both CMakeLists.txt files. DevKit file reduced from 187 lines to 30 lines (84% reduction). Both firmwares now use identical Opus 1.2.1 implementation. |
-| **Phase 3: DevKit Structural Refactor** | 🔄 **IN PROGRESS** | - | codec.c imported from production. CI fixes ongoing for nRF SDK v2.9 compatibility. button.c and storage.c deferred to Phase 4. |
-| **Phase 4: Harmonize Storage & Transport** | ⏳ Pending | - | Blocked by Phase 3 completion |
-| **Phase 5: Testing & Validation** | ⏳ Pending | - | Blocked by Phase 3-4 completion |
-| **Phase 6: Documentation & Polish** | ⏳ Pending | - | Blocked by Phase 3-5 completion |
+| **Phase 3: DevKit Structural Refactor** | ✅ **COMPLETE** | 2025-10-16 | codec.c imported from production. SD card interface unified (sd_card.h). DevKit mic.c migrated to Zephyr DMIC API. button.c and storage.c imported from production with compatibility layer. |
+| **Phase 4: Harmonize Storage & Transport** | ✅ **COMPLETE** | 2025-10-16 | Production transport.c now has conditional compilation guards. Kconfig symbols defined for Settings Service, Features Service, and Monitor subsystem. Both targets compile successfully. |
+| **Phase 5: Testing & Validation** | ⏳ Pending | - | Ready to begin hardware testing and validation |
+| **Phase 6: Documentation & Polish** | ⏳ Pending | - | Blocked by Phase 5 completion |
 
 ### Latest Updates
 
@@ -68,20 +68,65 @@
 - ✅ **Updated all includes**: button.c, main.c, storage.c, transport.c now use "sd_card.h"
 - ✅ **CI Build**: Phase 4a build passed - both targets compile successfully
 
-**ARCHITECTURE CORRECTION - Phase 4b Required: Migrate DevKit mic.c**
-- 🔍 **Current State**: DevKit and Production use different microphone driver architectures
-  - **Production**: Zephyr DMIC API (thread-based, memory slab, blocking reads) - omi/src/mic.c
-  - **DevKit**: nrfx PDM HAL (interrupt-driven, manual buffer management) - devkit/src/mic.c
-- ⚠️ **Core Requirement**: DevKit must adapt to production's architecture, not vice versa
-- 📋 **Decision**: Phase 4b will migrate DevKit to use production's mic.c approach
-  - Replace DevKit's interrupt-driven nrfx HAL with production's Zephyr DMIC API
-  - Update devicetree overlay to add dmic0 alias pointing to pdm0
-  - Already have CONFIG_AUDIO_DMIC=y enabled (from Phase 3 CI fixes)
-  - This enables eventual import of production's mic.c
-- 🎯 **Remaining Tasks**:
-  - Phase 4b: Migrate DevKit mic.c to Zephyr DMIC API (match production)
-  - Phase 4c: Import button.c and storage.c from production
-  - Phase 5: Add #ifdef guards to production transport.c
+**2025-10-16 - Phase 4b Complete: DevKit Mic.c Migration to Zephyr DMIC API**
+- ✅ **Migrated DevKit mic.c** from interrupt-driven nrfx PDM HAL to thread-based Zephyr DMIC API
+  - Analyzed production mic.c architecture (271 lines using audio_dmic driver)
+  - Rewrote DevKit mic.c following production's pattern with memory slab and blocking reads
+  - Added dmic0 alias to devicetree: `dmic0 = &pdm0` in both DevKit overlays
+  - Removed 4 nrfx-specific functions, replaced with 3 Zephyr DMIC functions
+  - Result: DevKit mic.c (270 lines) now architecturally identical to production (271 lines)
+- ✅ **CI Build**: Build 18572740364 passed - both targets compile successfully
+- 🎯 **Impact**: DevKit now uses production's proven Zephyr DMIC architecture
+
+**2025-10-16 - Phase 4c Complete: Import button.c and storage.c from Production**
+- ✅ **Imported storage.c and storage.h** from production (392 lines)
+  - Production version has 4 critical improvements over DevKit's 375-line version:
+    1. Offset validation preventing read beyond file size
+    2. Better error handling for read failures
+    3. Bug fix using packet_size instead of hardcoded SD_BLE_SIZE
+    4. Power efficiency improvements (k_msleep vs k_yield)
+  - storage.h includes `#ifdef CONFIG_OMI_ENABLE_OFFLINE_STORAGE` guard
+- ✅ **Imported button.c and button.h** from production (423 lines)
+  - Uses devicetree-based GPIO configuration (no hardcoded pins)
+  - Uses Zephyr Input API with message queues
+  - Includes power management (pm_device_runtime_get/put)
+  - Proper shutdown sequence with sys_poweroff()
+- ✅ **Added DevKit devicetree configuration**
+  - Added button devicetree nodes to both DevKit overlays:
+    ```dts
+    buttons: buttons {
+        compatible = "gpio-keys";
+        usr_btn: usr-btn {
+            gpios = <&gpio0 5 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+            label = "USR";
+            zephyr,code = <INPUT_KEY_ENTER>;
+        };
+    };
+    ```
+  - Added alias: `buttons = &buttons`
+- ✅ **Created DevKit compatibility layer**
+  - Added `led_off()` inline function in led.h
+  - Added `#define transport_off bt_off` in transport.h
+  - Added `haptic_off()` no-op inline in speaker.h
+  - Changed `extern bool is_off` to `bool is_off = false` in button.c
+  - Added `CONFIG_INPUT=y` and `CONFIG_POWEROFF=y` to all three DevKit conf files
+- ✅ **CI Build**: Build 18574067894 passed - both targets compile successfully
+- 🎯 **Impact**: DevKit now uses production's battle-tested button and storage implementations
+
+**2025-10-16 - Phase 5 (orig. Phase 4) Complete: Production transport.c Conditional Compilation**
+- ✅ **Added `#ifdef` guards to production transport.c** (firmware/omi/src/lib/core/transport.c)
+  - Guarded Settings Service includes, definitions, handlers, and registration
+  - Guarded Features Service includes, definitions, handlers, and registration
+  - Guarded Monitor subsystem includes and increment calls
+  - Total changes: ~100 lines wrapped in conditional compilation
+- ✅ **Defined Kconfig symbols** in firmware/omi/Kconfig:
+  - `CONFIG_OMI_ENABLE_SETTINGS_SERVICE` - BLE GATT service for dim ratio and mic gain (default y)
+  - `CONFIG_OMI_ENABLE_FEATURES_SERVICE` - BLE GATT service for feature flags (default y)
+  - `CONFIG_OMI_ENABLE_MONITOR` - Performance monitoring with increment calls (default y)
+- ✅ **Added configuration to production omi.conf** enabling all three features
+- ✅ **CI Build**: Build 18575326158 passed - both production and DevKit v2 targets compile successfully
+- 🎯 **Impact**: Production transport.c can now be conditionally compiled. Production firmware includes all services. DevKit firmware compiles without Settings/Features/Monitor by leaving symbols undefined.
+- 🎯 **Next Steps**: Phase 5 (orig. Phase 5) - Testing and validation on both hardware targets
 
 **2025-10-16 - CI/CD Fixes for nRF Connect SDK v2.9 Compatibility**
 - 🔧 **Board Definition Update**: Changed from `seeed_xiao_nrf52840_sense` to `xiao_ble/nrf52840/sense` (new format in SDK v2.9)

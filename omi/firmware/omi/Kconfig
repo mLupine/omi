@@ -56,4 +56,22 @@ config OMI_ENABLE_RFSW_CTRL
         "Enable RFSwitch Control support."
     default y
 
+config OMI_ENABLE_SETTINGS_SERVICE
+    bool "Enable Settings Service"
+    help
+        "Enable BLE GATT service for settings (dim ratio, mic gain)."
+    default y
+
+config OMI_ENABLE_FEATURES_SERVICE
+    bool "Enable Features Service"
+    help
+        "Enable BLE GATT service for feature flag discovery."
+    default y
+
+config OMI_ENABLE_MONITOR
+    bool "Enable Monitor subsystem"
+    help
+        "Enable performance monitoring with increment calls."
+    default y
+
 endmenu

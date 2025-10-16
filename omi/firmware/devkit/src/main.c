@@ -7,7 +7,7 @@
 #include "config.h"
 #include "led.h"
 #include "mic.h"
-#include "sdcard.h"
+#include "sd_card.h"
 #include "speaker.h"
 #include "storage.h"
 #include "transport.h"
@@ -199,7 +199,7 @@ int main(void)
     LOG_PRINTK("\n");
     LOG_INF("Mount SD card...\n");
 
-    err = mount_sd_card();
+    err = app_sd_init();
     if (err) {
         LOG_ERR("Failed to mount SD card (err %d)", err);
         return err;

@@ -19,7 +19,7 @@
 #include "button.h"
 #include "lib/battery/battery.h"
 #include "mic.h"
-#include "sdcard.h"
+#include "sd_card.h"
 #include "speaker.h"
 #include "storage.h"
 // #include "friend.h"
@@ -29,7 +29,7 @@ LOG_MODULE_REGISTER(transport, CONFIG_LOG_DEFAULT_LEVEL);
 extern bool is_connected;
 extern bool storage_is_on;
 extern uint8_t file_count;
-extern uint32_t file_num_array[2];
+extern uint32_t file_num_array[MAX_AUDIO_FILES];
 struct bt_conn *current_connection = NULL;
 uint16_t current_mtu = 0;
 uint16_t current_package_index = 0;

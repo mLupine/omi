@@ -1,4 +1,4 @@
-#include "sdcard.h"
+#include "sd_card.h"
 
 #include <ff.h>
 #include <zephyr/device.h>
@@ -33,7 +33,7 @@ static char current_full_path[MAX_PATH_LENGTH];
 static char read_buffer[MAX_PATH_LENGTH];
 static char write_buffer[MAX_PATH_LENGTH];
 
-uint32_t file_num_array[2];
+uint32_t file_num_array[MAX_AUDIO_FILES];
 
 static const char *disk_mount_pt = "/SD:/";
 
@@ -443,4 +443,15 @@ void sd_on()
 bool is_sd_on()
 {
     return sd_enabled;
+}
+
+int app_sd_init(void)
+{
+    return mount_sd_card();
+}
+
+int app_sd_off(void)
+{
+    sd_off();
+    return 0;
 }

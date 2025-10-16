@@ -41,20 +41,6 @@ void bt_ctlr_assert_handle(char *name, int type)
 }
 
 // Compatibility layer for production core files
-void haptic_off(void)
-{
-#ifdef CONFIG_OMI_ENABLE_HAPTIC
-    stop_haptic();
-#endif
-}
-
-void led_off(void)
-{
-    set_led_red(false);
-    set_led_green(false);
-    set_led_blue(false);
-}
-
 void transport_off(void)
 {
     // DevKit doesn't need special transport shutdown

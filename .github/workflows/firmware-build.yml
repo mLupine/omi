@@ -25,9 +25,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install west
+      - name: Install dependencies
         run: |
-          apt-get update && apt-get install -y python3-pip git
+          apt-get update && apt-get install -y python3-pip git cmake ninja-build
           python3 -m pip install west
 
       - name: Set up workspace
@@ -79,9 +79,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install west
+      - name: Install dependencies
         run: |
-          apt-get update && apt-get install -y python3-pip git
+          apt-get update && apt-get install -y python3-pip git cmake ninja-build
           python3 -m pip install west
 
       - name: Set up workspace

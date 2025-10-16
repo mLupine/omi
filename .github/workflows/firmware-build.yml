@@ -42,7 +42,7 @@ jobs:
       - name: Build production firmware
         run: |
           cd /workdir
-          nrfutil toolchain-manager launch -- west build -b omi/nrf5340/cpuapp omi --sysbuild -- -DBOARD_ROOT=/workdir
+          nrfutil toolchain-manager launch --ncs-version v2.9.0 -- west build -b omi/nrf5340/cpuapp omi --sysbuild -- -DBOARD_ROOT=/workdir
 
       - name: Prepare production artifacts
         run: |
@@ -91,7 +91,7 @@ jobs:
       - name: Build DevKit v2 firmware
         run: |
           cd /workdir
-          nrfutil toolchain-manager launch -- west build -b "xiao_ble/nrf52840/sense" devkit -- -DCONF_FILE=prj_xiao_ble_sense_devkitv2-adafruit.conf
+          nrfutil toolchain-manager launch --ncs-version v2.9.0 -- west build -b "xiao_ble/nrf52840/sense" devkit -- -DCONF_FILE=prj_xiao_ble_sense_devkitv2-adafruit.conf
 
       - name: Prepare DevKit artifacts
         run: |

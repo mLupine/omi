@@ -91,7 +91,7 @@ jobs:
       - name: Build DevKit v2 firmware
         run: |
           cd /workdir
-          west build -b seeed_xiao_nrf52840_sense devkit -- -DCONF_FILE=prj_xiao_ble_sense_devkitv2-adafruit.conf
+          west build -b "xiao_ble/nrf52840/sense" devkit -- -DCONF_FILE=prj_xiao_ble_sense_devkitv2-adafruit.conf
 
       - name: Prepare DevKit artifacts
         run: |

@@ -17,15 +17,25 @@
 #include <zephyr/sys/atomic.h>
 #include <zephyr/sys/ring_buffer.h>
 
+#ifdef CONFIG_OMI_ENABLE_ACCELEROMETER
 #include "accel.h"
+#endif
 #include "button.h"
 #include "config.h"
+#ifdef CONFIG_OMI_ENABLE_FEATURES_SERVICE
 #include "features.h"
+#endif
+#ifdef CONFIG_OMI_ENABLE_HAPTIC
 #include "haptic.h"
+#endif
 #include "mic.h"
+#ifdef CONFIG_OMI_ENABLE_MONITOR
 #include "monitor.h"
+#endif
 #include "sd_card.h"
+#ifdef CONFIG_OMI_ENABLE_SETTINGS_SERVICE
 #include "settings.h"
+#endif
 #include "storage.h"
 LOG_MODULE_REGISTER(transport, CONFIG_LOG_DEFAULT_LEVEL);
 
@@ -71,6 +81,13 @@ static ssize_t audio_codec_read_characteristic(struct bt_conn *conn,
                                                void *buf,
                                                uint16_t len,
                                                uint16_t offset);
+// Forward declarations for update functions and callbacks
+static void update_phy(struct bt_conn *conn);
+static void update_data_length(struct bt_conn *conn);
+static void update_mtu(struct bt_conn *conn);
+static void exchange_func(struct bt_conn *conn, uint8_t att_err, struct bt_gatt_exchange_params *params);
+
+#ifdef CONFIG_OMI_ENABLE_SETTINGS_SERVICE
 static ssize_t settings_dim_ratio_write_handler(struct bt_conn *conn,
                                                 const struct bt_gatt_attr *attr,
                                                 const void *buf,
@@ -93,14 +110,12 @@ static ssize_t settings_mic_gain_read_handler(struct bt_conn *conn,
                                               void *buf,
                                               uint16_t len,
                                               uint16_t offset);
+#endif
+
+#ifdef CONFIG_OMI_ENABLE_FEATURES_SERVICE
 static ssize_t
 features_read_handler(struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset);
-
-// Forward declarations for update functions and callbacks
-static void update_phy(struct bt_conn *conn);
-static void update_data_length(struct bt_conn *conn);
-static void update_mtu(struct bt_conn *conn);
-static void exchange_func(struct bt_conn *conn, uint8_t att_err, struct bt_gatt_exchange_params *params);
+#endif
 
 // --- GATT Exchange MTU Params ---
 static struct bt_gatt_exchange_params exchange_params;
@@ -152,6 +167,7 @@ static struct bt_gatt_attr audio_service_attr[] = {
 
 static struct bt_gatt_service audio_service = BT_GATT_SERVICE(audio_service_attr);
 
+#ifdef CONFIG_OMI_ENABLE_SETTINGS_SERVICE
 // --- Settings Service ---
 static struct bt_uuid_128 settings_service_uuid =
     BT_UUID_INIT_128(BT_UUID_128_ENCODE(0x19B10010, 0xE8F2, 0x537E, 0x4F6C, 0xD104768A1214));
@@ -177,7 +193,9 @@ static struct bt_gatt_attr settings_service_attr[] = {
 };
 
 static struct bt_gatt_service settings_service = BT_GATT_SERVICE(settings_service_attr);
+#endif
 
+#ifdef CONFIG_OMI_ENABLE_FEATURES_SERVICE
 // --- Features Service ---
 static struct bt_uuid_128 features_service_uuid =
     BT_UUID_INIT_128(BT_UUID_128_ENCODE(0x19B10020, 0xE8F2, 0x537E, 0x4F6C, 0xD104768A1214));
@@ -195,6 +213,7 @@ static struct bt_gatt_attr features_service_attr[] = {
 };
 
 static struct bt_gatt_service features_service = BT_GATT_SERVICE(features_service_attr);
+#endif
 
 // Advertisement data
 static const struct bt_data bt_ad[] = {
@@ -259,6 +278,7 @@ static ssize_t audio_data_write_handler(struct bt_conn *conn,
     return len;
 }
 
+#ifdef CONFIG_OMI_ENABLE_SETTINGS_SERVICE
 static ssize_t settings_dim_ratio_write_handler(struct bt_conn *conn,
                                                 const struct bt_gatt_attr *attr,
                                                 const void *buf,
@@ -335,7 +355,9 @@ static ssize_t settings_mic_gain_read_handler(struct bt_conn *conn,
     LOG_INF("Reading mic gain: %u", current_gain);
     return bt_gatt_attr_read(conn, attr, buf, len, offset, &current_gain, sizeof(current_gain));
 }
+#endif
 
+#ifdef CONFIG_OMI_ENABLE_FEATURES_SERVICE
 static ssize_t
 features_read_handler(struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset)
 {
@@ -369,6 +391,7 @@ features_read_handler(struct bt_conn *conn, const struct bt_gatt_attr *attr, voi
 
     return bt_gatt_attr_read(conn, attr, buf, len, offset, &features, sizeof(features));
 }
+#endif
 
 // --- MTU Update Callback ---
 static void exchange_func(struct bt_conn *conn, uint8_t att_err, struct bt_gatt_exchange_params *params)
@@ -596,8 +619,10 @@ static struct ring_buf ring_buf;
 
 static bool write_to_tx_queue(uint8_t *data, size_t size)
 {
+#ifdef CONFIG_OMI_ENABLE_MONITOR
     // Increment the counter
     monitor_inc_tx_queue_write();
+#endif
 
     if (size > CODEC_OUTPUT_MAX_BYTES) {
         return false;
@@ -679,7 +704,9 @@ static bool push_to_gatt(struct bt_conn *conn)
             // Try send notification
             int err =
                 bt_gatt_notify(conn, &audio_service.attrs[1], pusher_temp_data, packet_size + NET_BUFFER_HEADER_SIZE);
+#ifdef CONFIG_OMI_ENABLE_MONITOR
             monitor_inc_gatt_notify();
+#endif
 
             // Log failure
             if (err) {
@@ -774,7 +801,9 @@ bool write_to_storage(void)
         buffer_offset = buffer_offset + packet_size;
     }
 
+#ifdef CONFIG_OMI_ENABLE_MONITOR
     monitor_inc_storage_write();
+#endif
     return true;
 }
 #endif
@@ -1004,8 +1033,12 @@ int transport_start()
 
     // Start advertising
     bt_gatt_service_register(&audio_service);
+#ifdef CONFIG_OMI_ENABLE_SETTINGS_SERVICE
     bt_gatt_service_register(&settings_service);
+#endif
+#ifdef CONFIG_OMI_ENABLE_FEATURES_SERVICE
     bt_gatt_service_register(&features_service);
+#endif
 
 #ifdef CONFIG_OMI_ENABLE_OFFLINE_STORAGE
     // Register storage service for offline audio

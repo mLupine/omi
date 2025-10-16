@@ -19,10 +19,11 @@ target_sources(app PRIVATE
     src/sdcard.c
     src/usb.c
     src/storage.c
+    src/button.c
 
     # Import core functionality from production
     ${PROD_CORE_DIR}/codec.c
-    # Note: button.c and storage.c import deferred - need header compatibility layer
+    # Note: storage.c import and button.c unification deferred - need header compatibility layer
 	# src/nfc.c future release
 )
 

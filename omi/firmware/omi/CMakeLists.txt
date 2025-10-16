@@ -30,6 +30,6 @@ endif()
 target_sources(app PRIVATE ${core_sources} ${app_sources})
 
 if(CONFIG_OMI_CODEC_OPUS)
-    add_subdirectory(src/lib/core/lib/opus-1.2.1/)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../shared/lib/opus-1.2.1/)
     target_link_libraries(app PRIVATE opus_codec)
 endif()

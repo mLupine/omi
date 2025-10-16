@@ -35,21 +35,15 @@ jobs:
           cd /workdir/firmware
           mkdir -p v2.9.0
 
+      - name: Install West
+        run: |
+          python3 -m pip install --user west
+          export PATH=$PATH:$HOME/.local/bin
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
       - name: Initialize West workspace
         run: |
-          # Debug: Check for west
-          which west || echo "west not in PATH"
-          find /opt -name "west" 2>/dev/null || echo "west not found in /opt"
-          find / -name "west" -type f 2>/dev/null | head -5 || echo "west not found"
-
-          # Check for environment scripts
-          ls -la /opt/ 2>/dev/null || echo "No /opt directory"
-
-          # Try to find and source ncs environment
-          if [ -f "/opt/nordic/ncs/zephyr/zephyr-env.sh" ]; then
-            source /opt/nordic/ncs/zephyr/zephyr-env.sh
-          fi
-
+          export PATH=$PATH:$HOME/.local/bin
           cd /workdir/firmware/v2.9.0
           west init -m https://github.com/nrfconnect/sdk-nrf --mr v2.9.0
           west update --narrow --fetch-opt=--filter=tree:0
@@ -109,20 +103,15 @@ jobs:
           cd /workdir/firmware
           mkdir -p v2.9.0
 
+      - name: Install West
+        run: |
+          python3 -m pip install --user west
+          export PATH=$PATH:$HOME/.local/bin
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
       - name: Initialize West workspace
         run: |
-          # Debug: Check for west
-          which west || echo "west not in PATH"
-          find /opt -name "west" 2>/dev/null || echo "west not found in /opt"
-
-          # Check for environment scripts
-          ls -la /opt/ 2>/dev/null || echo "No /opt directory"
-
-          # Try to find and source ncs environment
-          if [ -f "/opt/nordic/ncs/zephyr/zephyr-env.sh" ]; then
-            source /opt/nordic/ncs/zephyr/zephyr-env.sh
-          fi
-
+          export PATH=$PATH:$HOME/.local/bin
           cd /workdir/firmware/v2.9.0
           west init -m https://github.com/nrfconnect/sdk-nrf --mr v2.9.0
           west update --narrow --fetch-opt=--filter=tree:0

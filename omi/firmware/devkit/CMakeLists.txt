@@ -20,10 +20,10 @@ target_sources(app PRIVATE
     src/usb.c
     src/storage.c
     src/button.c
+    src/lib/evt/button.c
 
     # Import core functionality from production
     ${PROD_CORE_DIR}/codec.c
-    # Note: storage.c import and button.c unification deferred - need header compatibility layer
 	# src/nfc.c future release
 )
 

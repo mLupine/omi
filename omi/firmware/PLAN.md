@@ -51,26 +51,37 @@
 - 🎯 **Impact**: Zero production functionality change, major DevKit simplification
 - 🎯 **Next Steps**: Phase 3 - Refactor DevKit to import codec.c, transport.c, storage.c, etc. from production core
 
-**2025-10-16 - Phase 3 Progress: DevKit Structural Refactor**
-- ✅ **Analysis Complete**: Examined all DevKit and production core files for unification potential
+**2025-10-16 - Phase 3 Complete: codec.c Import**
 - ✅ **codec.c**: IDENTICAL between DevKit and production (147 lines) - successfully imported from production
   - DevKit CMakeLists.txt updated to use `${PROD_CORE_DIR}/codec.c`
   - Removed redundant `devkit/src/codec.c` (backed up)
   - codec.h APIs are 100% compatible
-- 🔍 **button.c**: Production version is better (424 vs 536 lines)
-  - Production has: Better device tree usage, runtime PM, more #ifdef guards
-  - **Blocker**: Requires `sd_card.h` header compatibility (DevKit uses `sdcard.h`)
-  - **Decision**: Defer to Phase 4 - create header compatibility layer first
-- 🔍 **storage.c**: Production has bug fixes and improvements (393 vs 376 lines)
-  - Production fixes: Offset validation, error handling in write_to_gatt, better idle handling
-  - **Blocker**: API difference - DevKit uses `file_num_array[2]`, production uses `file_num_array[MAX_AUDIO_FILES]` (24 files)
-  - **Decision**: Defer to Phase 4 - fundamental storage model difference needs careful migration
-- ❌ **transport.c**: SIGNIFICANTLY different (DevKit 900 lines, production 1074 lines)
-  - Production has: Settings service, Features service, Monitor integration, better negotiation
-  - DevKit is simpler and older
-  - **Decision**: Keep separate for now, harmonize in Phase 4 with #ifdef guards per original plan
-- 🎯 **Impact**: Incremental progress - codec.c unified, other files need compatibility work
-- 🎯 **Next Steps**: Fix CI build issues, then Phase 4 - Create header compatibility layer, harmonize APIs, then import button.c and storage.c
+
+**2025-10-16 - Phase 4a Complete: SD Card Interface Unification**
+- ✅ **Replaced DevKit sdcard.h with production's sd_card.h**
+  - Added `#ifdef CONFIG_OMI_ENABLE_OFFLINE_STORAGE` guards
+  - Added `MAX_AUDIO_FILES 24` definition (was hardcoded 2)
+  - Added `app_sd_init()` and `app_sd_off()` power management API
+- ✅ **Updated DevKit sdcard.c**
+  - Changed `file_num_array[2]` to `file_num_array[MAX_AUDIO_FILES]`
+  - Added wrapper functions for production API compatibility
+- ✅ **Updated all includes**: button.c, main.c, storage.c, transport.c now use "sd_card.h"
+- ✅ **CI Build**: Phase 4a build passed - both targets compile successfully
+
+**ARCHITECTURE CORRECTION - Phase 4b Required: Migrate DevKit mic.c**
+- 🔍 **Current State**: DevKit and Production use different microphone driver architectures
+  - **Production**: Zephyr DMIC API (thread-based, memory slab, blocking reads) - omi/src/mic.c
+  - **DevKit**: nrfx PDM HAL (interrupt-driven, manual buffer management) - devkit/src/mic.c
+- ⚠️ **Core Requirement**: DevKit must adapt to production's architecture, not vice versa
+- 📋 **Decision**: Phase 4b will migrate DevKit to use production's mic.c approach
+  - Replace DevKit's interrupt-driven nrfx HAL with production's Zephyr DMIC API
+  - Update devicetree overlay to add dmic0 alias pointing to pdm0
+  - Already have CONFIG_AUDIO_DMIC=y enabled (from Phase 3 CI fixes)
+  - This enables eventual import of production's mic.c
+- 🎯 **Remaining Tasks**:
+  - Phase 4b: Migrate DevKit mic.c to Zephyr DMIC API (match production)
+  - Phase 4c: Import button.c and storage.c from production
+  - Phase 5: Add #ifdef guards to production transport.c
 
 **2025-10-16 - CI/CD Fixes for nRF Connect SDK v2.9 Compatibility**
 - 🔧 **Board Definition Update**: Changed from `seeed_xiao_nrf52840_sense` to `xiao_ble/nrf52840/sense` (new format in SDK v2.9)

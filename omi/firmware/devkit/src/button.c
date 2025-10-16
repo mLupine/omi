@@ -6,25 +6,30 @@
 #include <zephyr/bluetooth/services/bas.h>
 #include <zephyr/bluetooth/uuid.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/input/input.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/pm/device_runtime.h>
 #include <zephyr/sys/poweroff.h>
 
 #include "led.h"
 #include "mic.h"
-#include "sd_card.h"
 #include "speaker.h"
 #include "transport.h"
+#ifdef CONFIG_OMI_ENABLE_OFFLINE_STORAGE
+#include "sd_card.h"
+#endif
+
 LOG_MODULE_REGISTER(button, CONFIG_LOG_DEFAULT_LEVEL);
 
-bool is_off = false;
+extern bool is_off;
+
 static void button_ccc_config_changed_handler(const struct bt_gatt_attr *attr, uint16_t value);
 static ssize_t button_data_read_characteristic(struct bt_conn *conn,
                                                const struct bt_gatt_attr *attr,
                                                void *buf,
                                                uint16_t len,
                                                uint16_t offset);
-static struct gpio_callback button_cb_data;
 
 static struct bt_uuid_128 button_uuid =
     BT_UUID_INIT_128(BT_UUID_128_ENCODE(0x23BA7924, 0x0000, 0x1000, 0x7450, 0x346EAC492E92));
@@ -54,28 +59,13 @@ static void button_ccc_config_changed_handler(const struct bt_gatt_attr *attr, u
         LOG_ERR("Invalid CCC value: %u", value);
     }
 }
-struct gpio_dt_spec d4_pin = {.port = DEVICE_DT_GET(DT_NODELABEL(gpio0)),
-                              .pin = 4,
-                              .dt_flags = GPIO_OUTPUT_ACTIVE}; // 3.3
-struct gpio_dt_spec d5_pin_input = {.port = DEVICE_DT_GET(DT_NODELABEL(gpio0)),
-                                    .pin = 5,
-                                    .dt_flags = GPIO_INT_EDGE_RISING};
+static const struct device *const buttons = DEVICE_DT_GET(DT_ALIAS(buttons));
+static const struct gpio_dt_spec usr_btn = GPIO_DT_SPEC_GET_OR(DT_NODELABEL(usr_btn), gpios, {0});
 
 static bool was_pressed = false;
 
-//
-// button
-//
-void button_pressed_callback(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
-{
-    int temp = gpio_pin_get_raw(dev, d5_pin_input.pin);
-    LOG_PRINTK("button_pressed_callback %d\n", temp);
-    if (temp) {
-        was_pressed = false;
-    } else {
-        was_pressed = true;
-    }
-}
+// Using GPIO callback due to the lower priority of the input subsystem vs. storage.c's thread that prevents the
+// callback from working properly.
 #define BUTTON_CHECK_INTERVAL 40 // 0.04 seconds, 25 Hz
 
 void check_button_level(struct k_work *work_item);
@@ -223,26 +213,29 @@ void check_button_level(struct k_work *work_item)
 
     // Single tap
     if (event == BUTTON_EVENT_SINGLE_TAP) {
-        LOG_PRINTK("single tap detected\n");
+        LOG_INF("single tap detected\n");
         btn_last_event = event;
         notify_tap();
+        k_msleep(1000);
 
-        // Enter the low power mode
+        // // Enter the low power mode
         is_off = true;
-        bt_off();
+        transport_off();
+        k_msleep(300);
+
         turnoff_all();
     }
 
     // Double tap
     if (event == BUTTON_EVENT_DOUBLE_TAP) {
-        LOG_PRINTK("double tap detected\n");
+        LOG_INF("double tap detected\n");
         btn_last_event = event;
         notify_double_tap();
     }
 
     // Long press, one time event
     if (event == BUTTON_EVENT_LONG_PRESS && btn_last_event != BUTTON_EVENT_LONG_PRESS) {
-        LOG_PRINTK("long press detected\n");
+        LOG_INF("long press detected\n");
         btn_last_event = event;
         notify_long_tap();
     }
@@ -267,178 +260,6 @@ void check_button_level(struct k_work *work_item)
     return 0;
 }
 
-// @deprecated
-// #define LONG_PRESS_INTERVAL 25
-// #define SINGLE_PRESS_INTERVAL 2
-// void check_button_level_2(struct k_work *work_item)
-//{
-//     //insert the current button state here
-//    int state_ = was_pressed ? 1 : 0;
-//    if (current_button_state == IDLE)
-//    {
-//        if (state_ == 0)
-//        {
-//            //Do nothing!
-//        }
-//        else if (state_ == 1)
-//        {
-//            //Also do nothing, but transition to the next state
-//            notify_press();
-//            current_button_state = ONE_PRESS;
-//            if (is_off)
-//           {
-//             is_off = false;
-//             bt_on();
-//             play_haptic_milli(50);
-//           }
-//        }
-//    }
-//
-//    else if (current_button_state == ONE_PRESS)
-//    {
-//        if (state_ == 0)
-//        {
-//
-//            if(inc_count_0 == 0)
-//            {
-//                notify_unpress();
-//            }
-//            inc_count_0++; //button is unpressed
-//            if (inc_count_0 > SINGLE_PRESS_INTERVAL)
-//            {
-//                //If button is not pressed for a little while.......
-//                //transition to Two_press. button could be a single or double tap
-//                current_button_state = TWO_PRESS;
-//                reset_count();
-//            }
-//        }
-//        if (state_ == 1)
-//        {
-//            inc_count_1++; //button is pressed
-//
-//            if (inc_count_1 > LONG_PRESS_INTERVAL)
-//            {
-//                //If button is pressed for a long time.......
-//                notify_long_tap();
-//                //play_haptic_milli(10);
-//                //Fire the long mode notify and enter a grace period
-//                //turn off herre
-//                // TODO: FIXME
-//                //if(!from_wakeup)
-//                //{
-//                //    is_off = !is_off;
-//                //}
-//                //else
-//                //{
-//                //    from_wakeup = false;
-//                //}
-//                //if (is_off)
-//                //{
-//                //    bt_off();
-//                //    turnoff_all();
-//                //}
-//                current_button_state = GRACE;
-//                reset_count();
-//            }
-//
-//        }
-//
-//    }
-//
-//    else if (current_button_state == TWO_PRESS)
-//    {
-//        if (state_ == 0)
-//        {
-//            if (inc_count_1 > 0)
-//            { // if button has been pressed......
-//                notify_unpress();
-//                notify_double_tap();
-//
-//                //Fire the notify and enter a grace period
-//                current_button_state = GRACE;
-//                reset_count();
-//            }
-//             //single button press
-//            else if (inc_count_0 > 10)
-//            {
-//                notify_tap(); //Fire the notify and enter a grace period
-//                if(!from_wakeup)
-//                {
-//                    is_off = !is_off;
-//                }
-//                else
-//                {
-//                    from_wakeup = false;
-//                }
-//                //Fire the notify and enter a grace period
-//                if (is_off)
-//                {
-//                    bt_off();
-//                    turnoff_all();
-//                }
-//                current_button_state = GRACE;
-//                reset_count();
-//            }
-//            else
-//            {
-//                inc_count_0++; //not pressed
-//            }
-//        }
-//        else if (state_ == 1 )
-//        {
-//            if (inc_count_1 == 0)
-//            {
-//                notify_press();
-//                inc_count_1++;
-//            }
-//            if (inc_count_1 > threshold)
-//            {
-//                notify_long_tap();
-//                //play_haptic_milli(10);
-//                // TODO: FIXME
-//                //if(!from_wakeup)
-//                //{
-//                //    is_off = !is_off;
-//                //}
-//                //else
-//                //{
-//                //    from_wakeup = false;
-//                //}
-//                ////Fire the notify and enter a grace period
-//                //if (is_off)
-//                //{
-//                //    bt_off();
-//                //    turnoff_all();
-//                //}
-//                current_button_state = GRACE;
-//                reset_count();
-//            }
-//        }
-//    }
-//
-//    else if (current_button_state == GRACE)
-//    {
-//        if (state_ == 0)
-//        {
-//            if (inc_count_0 == 0 && (inc_count_1 > 0))
-//            {
-//                notify_unpress();
-//            }
-//            inc_count_0++;
-//            if (inc_count_0 > 1)
-//            {
-//                current_button_state = IDLE;
-//                reset_count();
-//            }
-//        }
-//        else if (state_ == 1)
-//        {
-//            inc_count_1++;
-//        }
-//    }
-//    k_work_reschedule(&button_work, K_MSEC(BUTTON_CHECK_INTERVAL));
-//}
-
 static ssize_t button_data_read_characteristic(struct bt_conn *conn,
                                                const struct bt_gatt_attr *attr,
                                                void *buf,
@@ -450,47 +271,64 @@ static ssize_t button_data_read_characteristic(struct bt_conn *conn,
     return bt_gatt_attr_read(conn, attr, buf, len, offset, &final_button_state, sizeof(final_button_state));
 }
 
+static struct gpio_callback button_cb_data;
+
+static void button_gpio_callback(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
+{
+    was_pressed = (gpio_pin_get_dt(&usr_btn) == 1);
+    LOG_INF("Button %s (GPIO callback)", was_pressed ? "pressed" : "released");
+}
+
+int button_regist_callback()
+{
+    int ret;
+
+    // Configure GPIO as input with pull-up
+    ret = gpio_pin_configure_dt(&usr_btn, GPIO_INPUT);
+    if (ret < 0) {
+        LOG_ERR("Failed to configure button GPIO (%d)", ret);
+        return ret;
+    }
+
+    // Setup interrupt on both edges
+    ret = gpio_pin_interrupt_configure_dt(&usr_btn, GPIO_INT_EDGE_BOTH);
+    if (ret < 0) {
+        LOG_ERR("Failed to configure button interrupt (%d)", ret);
+        return ret;
+    }
+
+    // Register callback
+    gpio_init_callback(&button_cb_data, button_gpio_callback, BIT(usr_btn.pin));
+    gpio_add_callback(usr_btn.port, &button_cb_data);
+
+    LOG_INF("Button initialized with GPIO interrupt");
+
+    return 0;
+}
+
 int button_init()
 {
-    if (gpio_is_ready_dt(&d4_pin)) {
-        LOG_INF("D4 Pin ready");
-    } else {
-        LOG_ERR("Error setting up D4 Pin");
-        return -1;
-    }
-    if (gpio_pin_configure_dt(&d4_pin, GPIO_OUTPUT_ACTIVE) < 0) {
-        LOG_ERR("Error setting up D4 Pin Voltage");
-        return -1;
-    } else {
-        LOG_INF("D4 ready to transmit voltage");
-    }
-    if (gpio_is_ready_dt(&d5_pin_input)) {
-        LOG_INF("D5 Pin ready");
-    } else {
-        LOG_ERR("D5 Pin not ready");
-        return -1;
+    int ret;
+
+    // Initialize the buttons device from evt
+    if (!device_is_ready(buttons)) {
+        LOG_ERR("Buttons device not ready");
+        return -ENODEV;
     }
 
-    int err2 = gpio_pin_configure_dt(&d5_pin_input, GPIO_INPUT);
-
-    if (err2 != 0) {
-        LOG_ERR("Error setting up D5 Pin");
-        return -1;
-    } else {
-        LOG_INF("D5 ready");
-    }
-    // GPIO_INT_LEVEL_INACTIVE
-    err2 = gpio_pin_interrupt_configure_dt(&d5_pin_input, GPIO_INT_EDGE_BOTH);
-
-    if (err2 != 0) {
-        LOG_ERR("D5 unable to detect button presses");
-        return -1;
-    } else {
-        LOG_INF("D5 ready to detect button presses");
+    // Enable runtime power management for the buttons device
+    ret = pm_device_runtime_get(buttons);
+    if (ret < 0) {
+        LOG_ERR("Failed to enable buttons device (%d)", ret);
+        return ret;
     }
 
-    gpio_init_callback(&button_cb_data, button_pressed_callback, BIT(d5_pin_input.pin));
-    gpio_add_callback(d5_pin_input.port, &button_cb_data);
+    // Regist callback
+    ret = button_regist_callback();
+    if (ret < 0) {
+        LOG_ERR("Failed to regist buttons callback (%d)", ret);
+        return ret;
+    }
 
     return 0;
 }
@@ -512,21 +350,71 @@ FSM_STATE_T get_current_button_state()
 
 void turnoff_all()
 {
+    int rc;
 
+    // Always turn off microphone
     mic_off();
-    sd_off();
-    speaker_off();
-    accel_off();
-    play_haptic_milli(50);
     k_msleep(100);
-    set_led_blue(false);
-    set_led_red(false);
-    set_led_green(false);
-    gpio_remove_callback(d5_pin_input.port, &button_cb_data);
-    gpio_pin_interrupt_configure_dt(&d5_pin_input, GPIO_INT_LEVEL_INACTIVE);
-    // maybe save something here to indicate success. next time the button is pressed we should know about it
+
+    // Turn off speaker if enabled
+#ifdef CONFIG_OMI_ENABLE_SPEAKER
+    speaker_off();
+    k_msleep(100);
+#endif
+
+    // Turn off accelerometer if enabled
+#ifdef CONFIG_OMI_ENABLE_ACCELEROMETER
+    accel_off();
+    k_msleep(100);
+#endif
+
+    if (is_sd_on()) {
+        app_sd_off();
+    }
+    k_msleep(300);
+
+    // Play haptic feedback if enabled
+#ifdef CONFIG_OMI_ENABLE_HAPTIC
+    play_haptic_milli(100);
+    k_msleep(300);
+    haptic_off();
+#endif
+
+    led_off();
+    k_msleep(100);
+
+    // Put the buttons device to sleep if button is enabled
+#ifdef CONFIG_OMI_ENABLE_BUTTON
+    pm_device_runtime_put(buttons);
+    k_msleep(100);
+#endif
+
+    // Disable USB if enabled
+#ifdef CONFIG_OMI_ENABLE_USB
     NRF_USBD->INTENCLR = 0xFFFFFFFF;
-    NRF_POWER->SYSTEMOFF = 1;
+#endif
+
+    // Log system power off
+    LOG_INF("System powering off");
+
+    // Configure usr_btn as input with interrupt to allow wake-up
+    rc = gpio_pin_configure_dt(&usr_btn, GPIO_INPUT);
+    if (rc < 0) {
+        LOG_ERR("Could not configure usr_btn GPIO (%d)", rc);
+        return;
+    }
+
+    rc = gpio_pin_interrupt_configure_dt(&usr_btn, GPIO_INT_LEVEL_LOW);
+    if (rc < 0) {
+        LOG_ERR("Could not configure usr_btn GPIO interrupt (%d)", rc);
+        return;
+    }
+
+    LOG_INF("Entering system off; press usr_btn to restart");
+    k_msleep(1000);
+
+    // Power off the system using sys_poweroff
+    sys_poweroff();
 }
 
 void force_button_state(FSM_STATE_T state)

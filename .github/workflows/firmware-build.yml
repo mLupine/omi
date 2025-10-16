@@ -20,24 +20,20 @@ jobs:
     container:
       image: nordicplayground/nrfconnect-sdk:v2.9-branch
       options: --user root
-    defaults:
-      run:
-        shell: bash
-        working-directory: /workdir
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          path: omi-repo
 
       - name: Set up workspace
         run: |
+          pwd
+          ls -la
+          ls -la omi/
           mkdir -p /workdir/firmware
-          cp -r omi-repo/omi/firmware/* /workdir/firmware/
+          cp -r omi/firmware/* /workdir/firmware/
           cd /workdir/firmware
           mkdir -p v2.9.0
-          cd v2.9.0
 
       - name: Initialize West workspace
         run: |
@@ -85,24 +81,20 @@ jobs:
     container:
       image: nordicplayground/nrfconnect-sdk:v2.9-branch
       options: --user root
-    defaults:
-      run:
-        shell: bash
-        working-directory: /workdir
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          path: omi-repo
 
       - name: Set up workspace
         run: |
+          pwd
+          ls -la
+          ls -la omi/
           mkdir -p /workdir/firmware
-          cp -r omi-repo/omi/firmware/* /workdir/firmware/
+          cp -r omi/firmware/* /workdir/firmware/
           cd /workdir/firmware
           mkdir -p v2.9.0
-          cd v2.9.0
 
       - name: Initialize West workspace
         run: |

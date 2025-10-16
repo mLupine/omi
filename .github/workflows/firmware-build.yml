@@ -42,6 +42,8 @@ jobs:
       - name: Build production firmware
         run: |
           cd /workdir
+          export ZEPHYR_TOOLCHAIN_VARIANT=gnuarmemb
+          export GNUARMEMB_TOOLCHAIN_PATH=/usr/local
           west build -b omi/nrf5340/cpuapp omi --sysbuild -- -DBOARD_ROOT=/workdir
 
       - name: Prepare production artifacts
@@ -91,6 +93,8 @@ jobs:
       - name: Build DevKit v2 firmware
         run: |
           cd /workdir
+          export ZEPHYR_TOOLCHAIN_VARIANT=gnuarmemb
+          export GNUARMEMB_TOOLCHAIN_PATH=/usr/local
           west build -b "xiao_ble/nrf52840/sense" devkit -- -DCONF_FILE=prj_xiao_ble_sense_devkitv2-adafruit.conf
 
       - name: Prepare DevKit artifacts

@@ -25,6 +25,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install west
+        run: |
+          apt-get update && apt-get install -y python3-pip git
+          python3 -m pip install west
+
       - name: Set up workspace
         run: |
           cd /workdir
@@ -75,6 +80,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Install west
+        run: |
+          apt-get update && apt-get install -y python3-pip git
+          python3 -m pip install west
 
       - name: Set up workspace
         run: |

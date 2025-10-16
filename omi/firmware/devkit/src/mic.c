@@ -148,11 +148,7 @@ int mic_start()
         return ret;
     }
 
-#ifdef NRF_PDM0_S
-    nrf_pdm_gain_set(NRF_PDM0_S, MIC_GAIN, MIC_GAIN);
-#else
-    nrf_pdm_gain_set(NRF_PDM0_NS, MIC_GAIN, MIC_GAIN);
-#endif
+    nrf_pdm_gain_set(NRF_PDM0, MIC_GAIN, MIC_GAIN);
 
     ret = dmic_trigger(dmic_dev, DMIC_TRIGGER_START);
     if (ret < 0) {

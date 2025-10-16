@@ -26,6 +26,8 @@ struct gpio_dt_spec sd_en_gpio_pin = {.port = DEVICE_DT_GET(DT_NODELABEL(gpio0))
 
 uint8_t file_count = 0;
 
+int get_file_contents(struct fs_dir_t *zdp, struct fs_dirent *entry);
+
 #define MAX_PATH_LENGTH 32
 static char current_full_path[MAX_PATH_LENGTH];
 static char read_buffer[MAX_PATH_LENGTH];

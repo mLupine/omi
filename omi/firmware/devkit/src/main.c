@@ -41,17 +41,25 @@ void bt_ctlr_assert_handle(char *name, int type)
 }
 
 // Compatibility layer for production core files
-void transport_off(void)
-{
-    // DevKit doesn't need special transport shutdown
-}
-
 void register_haptic_service(void)
 {
 #ifdef CONFIG_OMI_ENABLE_SPEAKER
     // DevKit's haptic is integrated with speaker.c
     // This stub allows transport.c to call it safely
 #endif
+}
+
+void led_off(void)
+{
+    set_led_red(false);
+    set_led_green(false);
+    set_led_blue(false);
+}
+
+void haptic_off(void)
+{
+    // DevKit haptic is handled via speaker.c
+    // No-op for compatibility with production button.c
 }
 
 bool is_connected = false;

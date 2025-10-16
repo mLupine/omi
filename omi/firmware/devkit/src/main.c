@@ -42,7 +42,7 @@ void bt_ctlr_assert_handle(char *name, int type)
 
 bool is_connected = false;
 bool is_charging = false;
-extern bool is_off;
+bool is_off = false;
 extern bool usb_charge;
 static void boot_led_sequence(void)
 {

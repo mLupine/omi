@@ -9,21 +9,20 @@ enable_language(C ASM)
 set(PROD_CORE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../omi/src/lib/core)
 
 target_sources(app PRIVATE
-    # DevKit-specific files remain in src/
+    # DevKit-specific files
     src/main.c
-    src/transport.c
-    src/mic.c
     src/led.c
     src/lib/battery/battery.c
     src/speaker.c
     src/sdcard.c
     src/usb.c
-    src/storage.c
-    src/button.c
 
-    # Import core functionality from production
+    # Import core functionality from production (single source of truth)
     ${PROD_CORE_DIR}/codec.c
-	# src/nfc.c future release
+    ${PROD_CORE_DIR}/transport.c
+    ${PROD_CORE_DIR}/mic.c
+    ${PROD_CORE_DIR}/storage.c
+    ${PROD_CORE_DIR}/button.c
 )
 
 # Use shared Opus codec library

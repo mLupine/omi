@@ -32,8 +32,6 @@ jobs:
 
       - name: Set up workspace
         run: |
-          cd /workdir
-          west update
           cp -r $GITHUB_WORKSPACE/omi/firmware/* /workdir/
 
       - name: Prepare production configuration
@@ -88,8 +86,6 @@ jobs:
 
       - name: Set up workspace
         run: |
-          cd /workdir
-          west update
           cp -r $GITHUB_WORKSPACE/omi/firmware/* /workdir/
 
       - name: Build DevKit v2 firmware

@@ -108,10 +108,11 @@ jobs:
           cp omi/zephyr/zephyr.bin ../../artifacts/production/ 2>/dev/null || echo "No zephyr.bin"
 
           # DevKit artifacts
-          cd ../build-devkit/zephyr
-          cp zephyr.hex ../../../artifacts/devkit-v2/ 2>/dev/null || echo "No zephyr.hex"
-          cp zephyr.elf ../../../artifacts/devkit-v2/ 2>/dev/null || echo "No zephyr.elf"
-          cp zephyr.bin ../../../artifacts/devkit-v2/ 2>/dev/null || echo "No zephyr.bin"
+          cd ../build-devkit/devkit/zephyr
+          cp zephyr.uf2 ../../../../artifacts/devkit-v2/ 2>/dev/null || echo "No zephyr.uf2"
+          cp zephyr.hex ../../../../artifacts/devkit-v2/ 2>/dev/null || echo "No zephyr.hex"
+          cp zephyr.elf ../../../../artifacts/devkit-v2/ 2>/dev/null || echo "No zephyr.elf"
+          cp zephyr.bin ../../../../artifacts/devkit-v2/ 2>/dev/null || echo "No zephyr.bin"
 
           # Build info
           cd ../../..

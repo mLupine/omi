@@ -16,7 +16,7 @@
 |-------|--------|-----------------|-------|
 | **Phase 1: CI/CD Foundation** | ✅ **COMPLETE** | 2025-10-16 | GitHub Actions workflow created at `.github/workflows/firmware-build.yml`. Builds both production (nRF5340) and DevKit v2 (nRF52840) targets on every push to main. Artifacts uploaded with 30-day retention. |
 | **Phase 2: Unify Opus Codec** | ✅ **COMPLETE** | 2025-10-16 | Created `shared/lib/opus-1.2.1/` with unified Opus codec. Updated both CMakeLists.txt files. DevKit file reduced from 187 lines to 30 lines (84% reduction). Both firmwares now use identical Opus 1.2.1 implementation. |
-| **Phase 3: DevKit Structural Refactor** | 🔄 **IN PROGRESS** | - | Starting refactor to import from production core |
+| **Phase 3: DevKit Structural Refactor** | 🔄 **IN PROGRESS** | 2025-10-16 | codec.c imported from production. button.c and storage.c require header compatibility layer (deferred to Phase 4) |
 | **Phase 4: Harmonize Storage & Transport** | ⏳ Pending | - | Not started |
 | **Phase 5: Testing & Validation** | ⏳ Pending | - | Not started |
 | **Phase 6: Documentation & Polish** | ⏳ Pending | - | Not started |
@@ -50,6 +50,27 @@
 - ✅ Both firmwares now use identical Opus implementation
 - 🎯 **Impact**: Zero production functionality change, major DevKit simplification
 - 🎯 **Next Steps**: Phase 3 - Refactor DevKit to import codec.c, transport.c, storage.c, etc. from production core
+
+**2025-10-16 - Phase 3 Progress: DevKit Structural Refactor**
+- ✅ **Analysis Complete**: Examined all DevKit and production core files for unification potential
+- ✅ **codec.c**: IDENTICAL between DevKit and production (147 lines) - successfully imported from production
+  - DevKit CMakeLists.txt updated to use `${PROD_CORE_DIR}/codec.c`
+  - Removed redundant `devkit/src/codec.c` (backed up)
+  - codec.h APIs are 100% compatible
+- 🔍 **button.c**: Production version is better (424 vs 536 lines)
+  - Production has: Better device tree usage, runtime PM, more #ifdef guards
+  - **Blocker**: Requires `sd_card.h` header compatibility (DevKit uses `sdcard.h`)
+  - **Decision**: Defer to Phase 4 - create header compatibility layer first
+- 🔍 **storage.c**: Production has bug fixes and improvements (393 vs 376 lines)
+  - Production fixes: Offset validation, error handling in write_to_gatt, better idle handling
+  - **Blocker**: API difference - DevKit uses `file_num_array[2]`, production uses `file_num_array[MAX_AUDIO_FILES]` (24 files)
+  - **Decision**: Defer to Phase 4 - fundamental storage model difference needs careful migration
+- ❌ **transport.c**: SIGNIFICANTLY different (DevKit 900 lines, production 1074 lines)
+  - Production has: Settings service, Features service, Monitor integration, better negotiation
+  - DevKit is simpler and older
+  - **Decision**: Keep separate for now, harmonize in Phase 4 with #ifdef guards per original plan
+- 🎯 **Impact**: Incremental progress - codec.c unified, other files need compatibility work
+- 🎯 **Next Steps**: Phase 4 - Create header compatibility layer, harmonize APIs, then import button.c and storage.c
 
 ---
 

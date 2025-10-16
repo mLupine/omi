@@ -40,10 +40,8 @@ jobs:
           cp omi.conf prj.conf
 
       - name: Build production firmware
-        shell: bash
         run: |
           cd /workdir
-          source zephyr/zephyr-env.sh
           west build -b omi/nrf5340/cpuapp omi --sysbuild -- -DBOARD_ROOT=/workdir
 
       - name: Prepare production artifacts
@@ -91,10 +89,8 @@ jobs:
           cp -r $GITHUB_WORKSPACE/omi/firmware/* /workdir/
 
       - name: Build DevKit v2 firmware
-        shell: bash
         run: |
           cd /workdir
-          source zephyr/zephyr-env.sh
           west build -b seeed_xiao_nrf52840_sense devkit -- -DCONF_FILE=prj_xiao_ble_sense_devkitv2-adafruit.conf
 
       - name: Prepare DevKit artifacts

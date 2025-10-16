@@ -35,11 +35,11 @@ jobs:
           cd /workdir/firmware
           mkdir -p v2.9.0
 
-      - name: Install West
+      - name: Install dependencies
         run: |
-          python3 -m pip install --user west
-          export PATH=$PATH:$HOME/.local/bin
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          apt-get update && apt-get install -y python3-pip git
+          python3 -m pip install --break-system-packages west
+          which west
 
       - name: Initialize West workspace
         run: |

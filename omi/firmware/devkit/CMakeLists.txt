@@ -16,11 +16,11 @@ target_sources(app PRIVATE
     src/speaker.c
     src/sdcard.c
     src/usb.c
+    src/mic.c
 
     # Import core functionality from production (single source of truth)
     ${PROD_CORE_DIR}/codec.c
     ${PROD_CORE_DIR}/transport.c
-    ${PROD_CORE_DIR}/mic.c
     ${PROD_CORE_DIR}/storage.c
     ${PROD_CORE_DIR}/button.c
 )

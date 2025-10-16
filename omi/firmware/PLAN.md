@@ -30,7 +30,15 @@
 - ✅ Both builds upload artifacts (DFU packages, HEX files, ELF files) with build metadata
 - ✅ Build summary job provides consolidated status report
 - ✅ Triggers on push/PR to main affecting `omi/firmware/**` paths, plus manual dispatch
+- ✅ Fixed build environment: Installed pip and west via apt-get/pip in Docker container
+- ✅ PR created: https://github.com/mLupine/omi/pull/2
+- 🎯 **Current Status**: Initial workflow run in progress, validating both builds work
 - 🎯 **Next Steps**: Proceed to Phase 2 - Unify Opus Codec by moving to `shared/lib/opus-1.2.1/`
+
+**Debugging Notes:**
+- Nordic's `nordicplayground/nrfconnect-sdk:v2.9-branch` container lacks pip/west by default
+- Solution: Install via `apt-get install python3-pip git` then `pip install --break-system-packages west`
+- West SDK download takes ~3-5 minutes (~1.5GB), builds take ~2-3 minutes each
 
 ---
 

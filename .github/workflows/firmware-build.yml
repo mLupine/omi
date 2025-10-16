@@ -38,7 +38,7 @@ jobs:
       - name: Install dependencies
         run: |
           apt-get update && apt-get install -y python3-pip git
-          python3 -m pip install --break-system-packages west
+          python3 -m pip install west
           which west
 
       - name: Initialize West workspace
@@ -105,7 +105,7 @@ jobs:
       - name: Install dependencies
         run: |
           apt-get update && apt-get install -y python3-pip git
-          python3 -m pip install --break-system-packages west
+          python3 -m pip install west
           which west
 
       - name: Initialize West workspace

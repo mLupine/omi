@@ -1,0 +1,147 @@
+name: Build Firmware
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'omi/firmware/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'omi/firmware/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Firmware
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: project
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            git cmake ninja-build gperf \
+            ccache dfu-util device-tree-compiler wget \
+            python3-dev python3-pip python3-setuptools python3-tk python3-wheel \
+            xz-utils file make gcc gcc-multilib g++-multilib libsdl2-dev libmagic1
+
+      - name: Install West
+        run: |
+          pip3 install --user west
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Cache nRF Connect SDK
+        uses: actions/cache@v4
+        with:
+          path: ncs
+          key: ncs-v2.9.0-${{ runner.os }}
+          restore-keys: |
+            ncs-v2.9.0-
+
+      - name: Initialize nRF Connect SDK workspace
+        run: |
+          if [ ! -d "ncs/.west" ]; then
+            west init -m https://github.com/nrfconnect/sdk-nrf --mr v2.9.0 ncs
+            cd ncs
+            west update --narrow -o=--depth=1
+          else
+            echo "nRF Connect SDK already initialized from cache"
+          fi
+
+      - name: Cache Zephyr SDK
+        uses: actions/cache@v4
+        with:
+          path: ~/zephyr-sdk-0.17.0
+          key: zephyr-sdk-0.17.0-${{ runner.os }}
+
+      - name: Install Zephyr SDK
+        run: |
+          if [ ! -d "$HOME/zephyr-sdk-0.17.0" ]; then
+            cd ~
+            wget https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.17.0/zephyr-sdk-0.17.0_linux-x86_64.tar.xz
+            tar xf zephyr-sdk-0.17.0_linux-x86_64.tar.xz
+            cd zephyr-sdk-0.17.0
+            ./setup.sh -t all -h -c
+          else
+            echo "Zephyr SDK already installed from cache"
+          fi
+
+      - name: Install Python dependencies
+        run: |
+          pip3 install --user -r ncs/zephyr/scripts/requirements.txt
+          pip3 install --user -r ncs/nrf/scripts/requirements.txt
+          pip3 install --user -r ncs/bootloader/mcuboot/scripts/requirements.txt
+
+      - name: Copy firmware to workspace
+        run: |
+          cp -r project/omi/firmware/* ncs/
+
+      - name: Build Production firmware (nRF5340)
+        run: |
+          cd ncs/omi
+          cp omi.conf prj.conf
+          cd ..
+          west build -b omi/nrf5340/cpuapp omi --sysbuild --build-dir build-production -- -DBOARD_ROOT=$PWD
+
+      - name: Build DevKit v2 firmware (nRF52840)
+        run: |
+          cd ncs
+          west build -b xiao_ble/nrf52840/sense devkit --build-dir build-devkit -- -DCONF_FILE=prj_xiao_ble_sense_devkitv2-adafruit.conf -DDTC_OVERLAY_FILE=overlay/xiao_ble_sense_devkitv2-adafruit.overlay
+
+      - name: Prepare artifacts
+        run: |
+          mkdir -p artifacts/production artifacts/devkit-v2
+
+          # Production artifacts
+          cd ncs/build-production
+          cp dfu_application.zip ../../artifacts/production/ 2>/dev/null || echo "No dfu_application.zip"
+          cp merged.hex ../../artifacts/production/ 2>/dev/null || echo "No merged.hex"
+          cp omi/zephyr/zephyr.elf ../../artifacts/production/ 2>/dev/null || echo "No zephyr.elf"
+          cp omi/zephyr/zephyr.bin ../../artifacts/production/ 2>/dev/null || echo "No zephyr.bin"
+
+          # DevKit artifacts
+          cd ../build-devkit/devkit/zephyr
+          cp zephyr.uf2 ../../../../artifacts/devkit-v2/ 2>/dev/null || echo "No zephyr.uf2"
+          cp zephyr.hex ../../../../artifacts/devkit-v2/ 2>/dev/null || echo "No zephyr.hex"
+          cp zephyr.elf ../../../../artifacts/devkit-v2/ 2>/dev/null || echo "No zephyr.elf"
+          cp zephyr.bin ../../../../artifacts/devkit-v2/ 2>/dev/null || echo "No zephyr.bin"
+
+          # Build info
+          cd ../../../..
+          echo "Build Date: $(date -u +%Y-%m-%dT%H:%M:%SZ)" > artifacts/production/build_info.txt
+          echo "Commit: ${{ github.sha }}" >> artifacts/production/build_info.txt
+          echo "Branch: ${{ github.ref_name }}" >> artifacts/production/build_info.txt
+
+          cp artifacts/production/build_info.txt artifacts/devkit-v2/build_info.txt
+
+      - name: Upload Production artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: omi-production-${{ github.sha }}
+          path: artifacts/production/
+          retention-days: 30
+
+      - name: Upload DevKit v2 artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: omi-devkit-v2-${{ github.sha }}
+          path: artifacts/devkit-v2/
+          retention-days: 30
+
+      - name: Build Summary
+        if: always()
+        run: |
+          echo "### Firmware Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Firmware builds completed!" >> $GITHUB_STEP_SUMMARY

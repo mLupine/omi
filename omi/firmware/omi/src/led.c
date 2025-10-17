@@ -3,7 +3,6 @@
 #include <zephyr/drivers/pwm.h>
 #include <zephyr/logging/log.h>
 
-#include "device/hal/led_hal.h"
 #include "lib/core/settings.h"
 #include "lib/core/utils.h"
 

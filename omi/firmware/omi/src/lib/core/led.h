@@ -4,12 +4,7 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/kernel.h>
 
-// LED color enum for PWM control
-typedef enum {
-    LED_RED,
-    LED_GREEN,
-    LED_BLUE
-} led_color_t;
+#include "device/hal/led_hal.h"
 
 /**
  * @brief Initialize the LEDs

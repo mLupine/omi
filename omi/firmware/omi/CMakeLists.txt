@@ -29,6 +29,7 @@ endif()
 
 file(GLOB hal_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/../boards/nrf5340/mic_hal.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../boards/nrf5340/led_hal.c
 )
 
 target_sources(app PRIVATE ${core_sources} ${app_sources} ${hal_sources})

@@ -26,6 +26,7 @@ target_sources(app PRIVATE
 
     # Board-specific HAL implementation
     ${CMAKE_CURRENT_SOURCE_DIR}/../boards/nrf52840/mic_hal.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../boards/nrf52840/led_hal.c
 )
 
 target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../)

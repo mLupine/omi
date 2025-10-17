@@ -21,6 +21,7 @@ file(GLOB core_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/../../device/core/transport.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../device/core/button.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../device/core/monitor.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../device/core/mic.c
 )
 
 if(CONFIG_OMI_ENABLE_OFFLINE_STORAGE)

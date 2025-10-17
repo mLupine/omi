@@ -20,6 +20,7 @@ target_sources(app PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../device/core/transport.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../device/core/storage.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../device/core/button.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../device/core/mic.c
 
     # Board-specific HAL implementation
     ${CMAKE_CURRENT_SOURCE_DIR}/../../hal/nrf52840/mic_hal.c

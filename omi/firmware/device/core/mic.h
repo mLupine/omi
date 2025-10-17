@@ -7,13 +7,14 @@
 typedef void (*mix_handler)(int16_t *);
 
 /**
- * @brief Initialize the Microphone
+ * @brief Initialize the Microphone with specified gain level
  *
- * Initializes the Microphone
+ * Initializes the microphone with HAL init, DMIC configuration, and gain setting
  *
+ * @param gain_level Microphone gain level (0-8 for nRF5340, 0-255 for nRF52840)
  * @return 0 if successful, negative errno code if error
  */
-int mic_start();
+int mic_start_with_gain(uint8_t gain_level);
 void set_mic_callback(mix_handler _callback);
 
 void mic_off();

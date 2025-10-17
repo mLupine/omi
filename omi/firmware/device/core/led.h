@@ -4,7 +4,7 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/kernel.h>
 
-#include "device/hal/led_hal.h"
+#include "hal/include/led_hal.h"
 
 /**
  * @brief Initialize the LEDs

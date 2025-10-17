@@ -1,3 +1,110 @@
+# FIRMWARE ARCHITECTURE REFACTOR PLAN
+
+## 🚨 IMMEDIATE ARCHITECTURE FIX (CURRENT PRIORITY)
+
+**Date**: 2025-10-17
+**Status**: 🔴 **CRITICAL** - Architecture score 4/10, requires immediate refactoring
+**Goal**: Fix critical architectural violations and establish professional structure
+
+### Architecture Analysis Summary
+
+The architecture-ultrathink agent identified **critical structural problems**:
+- **3 duplicate Opus libraries** (only 1 used, 2 wasted)
+- **boards/ directory misuse** - Contains HAL `.c` files instead of board definitions (violates Zephyr conventions)
+- **Apps at firmware root** - `omi/`, `devkit/`, `test/` should be in `apps/` directory
+- **No layer separation** - BSP, HAL, drivers, middleware all mixed
+- **Current score**: 4/10 (functional but architectural debt)
+
+### Immediate Refactor Tasks (This Session)
+
+#### ✅ Step 1: Delete Duplicate Opus Libraries
+- Remove `device/core/lib/opus-1.2.1/` (not used)
+- Remove `devkit/src/lib/opus-1.2.1/` (not used)
+- Rename `shared/` → `lib/` for clarity
+- Keep single instance: `lib/opus-1.2.1/`
+
+#### ✅ Step 2: Create Proper HAL Directory
+```
+hal/
+├── include/           # HAL interface headers
+│   ├── hal_mic.h
+│   └── hal_led.h
+├── nrf5340/          # nRF5340 HAL implementations
+│   ├── hal_mic_nrf5340.c
+│   └── hal_led_nrf5340.c
+└── nrf52840/         # nRF52840 HAL implementations
+    ├── hal_mic_nrf52840.c
+    └── hal_led_nrf52840.c
+```
+
+#### ✅ Step 3: Move HAL Implementations
+- Move `device/hal/*.h` → `hal/include/`
+- Move `boards/nrf5340/mic_hal.c` → `hal/nrf5340/hal_mic_nrf5340.c`
+- Move `boards/nrf5340/led_hal.c` → `hal/nrf5340/hal_led_nrf5340.c`
+- Move `boards/nrf52840/mic_hal.c` → `hal/nrf52840/hal_mic_nrf52840.c`
+- Move `boards/nrf52840/led_hal.c` → `hal/nrf52840/hal_led_nrf52840.c`
+- Delete empty `boards/nrf5340/`, `boards/nrf52840/`, `device/hal/` directories
+
+#### ✅ Step 4: Organize Applications
+```
+apps/
+├── omi/              # Production firmware
+├── devkit/           # DevKit firmware
+└── test/             # EVT test firmware
+```
+- Move `omi/` → `apps/omi/`
+- Move `devkit/` → `apps/devkit/`
+- Move `test/` → `apps/test/`
+
+#### ✅ Step 5: Update Build Files
+- Update `apps/omi/CMakeLists.txt` with new paths
+- Update `apps/devkit/CMakeLists.txt` with new paths
+- Update `apps/test/CMakeLists.txt` with new paths
+- Update `.github/workflows/firmware-build.yml` with new paths
+
+#### ✅ Step 6: Update Source Includes
+- Update all `#include "device/hal/mic_hal.h"` → `#include "hal/include/hal_mic.h"`
+- Update all `#include "device/hal/led_hal.h"` → `#include "hal/include/hal_led.h"`
+
+#### ✅ Step 7: Verify Builds
+- Build `apps/omi` (production firmware)
+- Build `apps/devkit` (DevKit firmware)
+- Verify CI passes
+
+### Target Structure (After Immediate Fix)
+
+```
+firmware/
+├── apps/                    # Application firmware
+│   ├── omi/                # Production (nRF5340)
+│   ├── devkit/             # DevKit (nRF52840)
+│   └── test/               # EVT test
+├── hal/                     # Hardware Abstraction Layer
+│   ├── include/            # HAL interfaces
+│   ├── nrf5340/            # nRF5340 implementations
+│   └── nrf52840/           # nRF52840 implementations
+├── device/
+│   └── core/               # Shared core functionality
+├── lib/                     # Third-party libraries (single source)
+│   └── opus-1.2.1/
+├── boards/
+│   └── omi/                # Zephyr board definition only
+├── bootloader/
+└── scripts/
+```
+
+### What This Fixes
+
+✅ Removes 2 duplicate Opus libraries
+✅ Fixes boards/ directory misuse (follows Zephyr conventions)
+✅ Creates proper HAL directory structure
+✅ Moves apps to dedicated directory
+✅ Establishes foundation for full migration
+
+**Architecture Score Progression**: 4/10 → 5.5/10 (cleaned up, proper structure)
+
+---
+
 # PERFECT FIRMWARE UNIFICATION PLAN
 
 ## Executive Summary

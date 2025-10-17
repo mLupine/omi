@@ -105,6 +105,135 @@ firmware/
 
 ---
 
+## 🔥 PHASE 2: CODE CONSOLIDATION (CURRENT PRIORITY)
+
+**Date**: 2025-10-17
+**Status**: 🎯 **IN PROGRESS** - Architecture score 6.5/10, consolidating duplicated code
+**Goal**: Eliminate ~900 lines of code duplication by consolidating mic, SD card, LED implementations
+
+### Post-Refactor Architecture Review Summary
+
+**Current Score: 6.5/10** (improved from 4/10 after Phase 1)
+
+**What Improved:**
+- ✅ Eliminated 2 duplicate Opus libraries (~20MB saved)
+- ✅ Established clean HAL abstraction (excellent design)
+- ✅ Organized apps into dedicated directory
+- ✅ Consistent build system patterns
+
+**Critical Issues Remaining:**
+- ❌ **lib/lib/ nesting**: Opus incorrectly at `lib/lib/opus-1.2.1/` instead of `lib/opus-1.2.1/`
+- ❌ **SD Card**: 500+ lines duplicated between omi/devkit (95% identical)
+- ❌ **Microphone**: 180+ lines duplicated (98% identical)
+- ❌ **LED**: 40+ lines duplicated (70% identical)
+- ⚠️ **Battery**: Library exists in 2 places (justified but poorly organized)
+
+### Phase 2 Consolidation Tasks
+
+#### ✅ Task 1: Fix lib/lib/ Nesting (5 min)
+**Problem**: Opus library incorrectly nested under `lib/lib/opus-1.2.1/`
+**Solution**:
+```bash
+mv lib/lib/opus-1.2.1 lib/
+rmdir lib/lib
+```
+**Status**: COMPLETE
+
+#### ✅ Task 2: Consolidate Microphone Implementation (4 hours)
+**Problem**: 98% identical code in apps/omi/src/mic.c and apps/devkit/src/mic.c (180 lines duplicated)
+
+**Identical Functions (should be shared)**:
+- `interleaved_stereo_to_mono()` - audio processing
+- Thread management pattern
+- Memory slab configuration
+
+**Solution**:
+1. Move shared audio processing to `device/core/mic.c`
+2. Create thin app wrappers in `apps/*/src/mic.c` (30 lines each)
+3. App-specific differences:
+   - Omi: `app_settings_get_mic_gain()` for persistent gain
+   - DevKit: hardcoded `MIC_GAIN` constant
+
+**Status**: COMPLETE
+
+#### ✅ Task 3: Consolidate SD Card Implementation (6 hours)
+**Problem**: 500+ lines duplicated between omi and devkit (95% identical)
+
+**Identical Functions (byte-for-byte)**:
+- `generate_new_audio_header()` - 24 lines
+- `get_file_contents()` - 27 lines
+- `move_read_pointer()` / `move_write_pointer()` - 32 lines
+- `clear_audio_file()` - 27 lines
+- `save_offset()` / `get_offset()` - 48 lines
+
+**Minor Differences (power management only)**:
+- Omi: `pm_device_action_run()` for cleaner power management
+- DevKit: GPIO pin manipulation directly
+
+**Solution**:
+1. Move entire SD card filesystem layer to `device/core/sd_card.c`
+2. Create platform-specific power management in HAL:
+   - `hal/include/sd_hal.h` - power interface
+   - `hal/nrf5340/sd_hal.c` - PM device actions
+   - `hal/nrf52840/sd_hal.c` - GPIO control
+3. Thin app wrappers (50 lines each)
+
+**Status**: COMPLETE
+
+#### ✅ Task 4: Consolidate LED Implementation (2 hours)
+**Problem**: LED logic duplicated with minor settings differences
+
+**Differences**:
+- Omi: PWM dimming with `app_settings_get_dim_ratio()`
+- DevKit: Simple on/off via HAL
+
+**Solution**:
+1. Create `device/core/led.c` with:
+   - `led_set_brightness(color, brightness)` - uses HAL
+   - `led_set_on(color)` - uses HAL
+   - `led_set_off(color)` - uses HAL
+   - Optional settings callback for dimming
+2. Apps configure behavior:
+   - Omi: Uses PWM with settings
+   - DevKit: Simple on/off
+
+**Status**: COMPLETE
+
+#### ✅ Task 5: Resolve Battery Library Architecture (1 hour)
+**Problem**: Battery library exists in 2 places with different discharge curves
+
+**Current**:
+- `device/core/lib/battery/` - 12-state production profile
+- `apps/devkit/src/lib/battery/` - 16-state devkit profile
+
+**Solution**: Configuration-based approach
+```c
+// device/core/lib/battery/battery.c
+#ifdef BATTERY_PROFILE_PRODUCTION
+    BatteryState battery_states[] = {...};  // 12-state production
+#elif BATTERY_PROFILE_DEVKIT
+    BatteryState battery_states[] = {...};  // 16-state devkit
+#endif
+```
+
+**Status**: COMPLETE
+
+### Expected Results
+
+**Code Reduction:**
+- Microphone: -180 lines duplication
+- SD Card: -500 lines duplication
+- LED: -40 lines duplication
+- Battery: Unified with configuration
+- **Total: -720 lines of duplicated code**
+
+**Architecture Score Progression**: 6.5/10 → 8.0/10
+- Maintainability: +2 (single point of maintenance)
+- Scalability: +1 (easy to add new platforms)
+- Modularity: +1 (clear separation of concerns)
+
+---
+
 # PERFECT FIRMWARE UNIFICATION PLAN
 
 ## Executive Summary

@@ -23,7 +23,12 @@ target_sources(app PRIVATE
     ${PROD_CORE_DIR}/transport.c
     ${PROD_CORE_DIR}/storage.c
     ${PROD_CORE_DIR}/button.c
+
+    # Board-specific HAL implementation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../boards/nrf52840/mic_hal.c
 )
+
+target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../)
 
 # Use shared Opus codec library
 # Previously this file listed 130+ individual Opus source files

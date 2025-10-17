@@ -27,7 +27,12 @@ if(CONFIG_OMI_ENABLE_OFFLINE_STORAGE)
     list(APPEND core_sources src/lib/core/storage.c)
 endif()
 
-target_sources(app PRIVATE ${core_sources} ${app_sources})
+file(GLOB hal_sources
+    ${CMAKE_CURRENT_SOURCE_DIR}/../boards/nrf5340/mic_hal.c
+)
+
+target_sources(app PRIVATE ${core_sources} ${app_sources} ${hal_sources})
+target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../)
 
 if(CONFIG_OMI_CODEC_OPUS)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../shared/lib/opus-1.2.1/ ${CMAKE_CURRENT_BINARY_DIR}/opus)

@@ -5,9 +5,6 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(nrf52840_nordic)
 enable_language(C ASM)
 
-# Define production core directory as source of truth
-set(PROD_CORE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../omi/src/lib/core)
-
 target_sources(app PRIVATE
     # DevKit-specific files
     src/main.c
@@ -18,11 +15,11 @@ target_sources(app PRIVATE
     src/usb.c
     src/mic.c
 
-    # Import core functionality from production (single source of truth)
-    ${PROD_CORE_DIR}/codec.c
-    ${PROD_CORE_DIR}/transport.c
-    ${PROD_CORE_DIR}/storage.c
-    ${PROD_CORE_DIR}/button.c
+    # Import core functionality from device/core (single source of truth)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../device/core/codec.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../device/core/transport.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../device/core/storage.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../device/core/button.c
 
     # Board-specific HAL implementation
     ${CMAKE_CURRENT_SOURCE_DIR}/../boards/nrf52840/mic_hal.c

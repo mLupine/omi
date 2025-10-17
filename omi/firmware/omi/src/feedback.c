@@ -1,8 +1,8 @@
-#include "lib/core/feedback.h"
+#include "device/core/feedback.h"
 
 #include <zephyr/kernel.h>
 
-#include "lib/core/led.h"
+#include "device/core/led.h"
 
 /**
  * @brief Show error indication with color-coded pattern

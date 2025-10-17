@@ -3,21 +3,21 @@
 #include <zephyr/pm/device_runtime.h>
 #include <zephyr/shell/shell.h>
 
-#include "lib/core/button.h"
-#include "lib/core/codec.h"
-#include "lib/core/config.h"
-#include "lib/core/feedback.h"
-#include "lib/core/haptic.h"
-#include "lib/core/led.h"
-#include "lib/core/lib/battery/battery.h"
-#include "lib/core/mic.h"
-#include "lib/core/monitor.h"
-#include "lib/core/settings.h"
-#include "lib/core/transport.h"
+#include "device/core/button.h"
+#include "device/core/codec.h"
+#include "device/core/config.h"
+#include "device/core/feedback.h"
+#include "device/core/haptic.h"
+#include "device/core/led.h"
+#include "device/core/lib/battery/battery.h"
+#include "device/core/mic.h"
+#include "device/core/monitor.h"
+#include "device/core/settings.h"
+#include "device/core/transport.h"
 #ifdef CONFIG_OMI_ENABLE_OFFLINE_STORAGE
-#include "lib/core/storage.h"
+#include "device/core/storage.h"
 #endif
-#include "lib/core/sd_card.h"
+#include "device/core/sd_card.h"
 #include "spi_flash.h"
 
 LOG_MODULE_REGISTER(main, CONFIG_LOG_DEFAULT_LEVEL);

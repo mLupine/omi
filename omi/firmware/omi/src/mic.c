@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "lib/core/mic.h"
+#include "device/core/mic.h"
 
 #include <nrfx_pdm.h>
 #include <zephyr/audio/dmic.h>
@@ -12,7 +12,7 @@
 #include <zephyr/logging/log.h>
 
 #include "device/hal/mic_hal.h"
-#include "lib/core/settings.h"
+#include "device/core/settings.h"
 
 LOG_MODULE_REGISTER(mic, CONFIG_LOG_DEFAULT_LEVEL);
 

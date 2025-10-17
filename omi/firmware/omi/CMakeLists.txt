@@ -16,15 +16,15 @@ file(GLOB app_sources
     src/feedback.c
 )
 file(GLOB core_sources
-    src/lib/core/config.h
-    src/lib/core/codec.c
-    src/lib/core/transport.c
-    src/lib/core/button.c
-    src/lib/core/monitor.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../device/core/config.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/../device/core/codec.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../device/core/transport.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../device/core/button.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../device/core/monitor.c
 )
 
 if(CONFIG_OMI_ENABLE_OFFLINE_STORAGE)
-    list(APPEND core_sources src/lib/core/storage.c)
+    list(APPEND core_sources ${CMAKE_CURRENT_SOURCE_DIR}/../device/core/storage.c)
 endif()
 
 file(GLOB hal_sources

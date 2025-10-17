@@ -1,4 +1,4 @@
-#include "lib/core/sd_card.h"
+#include "device/core/sd_card.h"
 
 #include <ff.h>
 #include <string.h>

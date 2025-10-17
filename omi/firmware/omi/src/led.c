@@ -1,10 +1,10 @@
-#include "lib/core/led.h"
+#include "device/core/led.h"
 
 #include <zephyr/drivers/pwm.h>
 #include <zephyr/logging/log.h>
 
-#include "lib/core/settings.h"
-#include "lib/core/utils.h"
+#include "device/core/settings.h"
+#include "device/core/utils.h"
 
 LOG_MODULE_REGISTER(led, CONFIG_LOG_DEFAULT_LEVEL);
 

@@ -1,4 +1,4 @@
-#include "lib/core/lib/battery/battery.h"
+#include "device/core/lib/battery/battery.h"
 
 #include <hal/nrf_saadc.h>
 #include <zephyr/device.h>

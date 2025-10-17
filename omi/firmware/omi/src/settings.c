@@ -1,4 +1,4 @@
-#include "lib/core/settings.h"
+#include "device/core/settings.h"
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>

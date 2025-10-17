@@ -10,7 +10,6 @@ file(GLOB app_sources
     src/battery.c
     src/led.c
     src/haptic.c
-    src/sd_card.c
     src/spi_flash.c
     src/settings.c
     src/feedback.c
@@ -22,6 +21,7 @@ file(GLOB core_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/../../device/core/button.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../device/core/monitor.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../device/core/mic.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../device/core/sd_card.c
 )
 
 if(CONFIG_OMI_ENABLE_OFFLINE_STORAGE)
@@ -31,6 +31,7 @@ endif()
 file(GLOB hal_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/../../hal/nrf5340/mic_hal.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../hal/nrf5340/led_hal.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../hal/nrf5340/sd_hal.c
 )
 
 target_sources(app PRIVATE ${core_sources} ${app_sources} ${hal_sources})

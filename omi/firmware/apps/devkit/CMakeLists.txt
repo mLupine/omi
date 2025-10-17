@@ -11,7 +11,6 @@ target_sources(app PRIVATE
     src/led.c
     src/lib/battery/battery.c
     src/speaker.c
-    src/sdcard.c
     src/usb.c
     src/mic.c
 
@@ -21,10 +20,12 @@ target_sources(app PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../device/core/storage.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../device/core/button.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../device/core/mic.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../device/core/sd_card.c
 
     # Board-specific HAL implementation
     ${CMAKE_CURRENT_SOURCE_DIR}/../../hal/nrf52840/mic_hal.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../hal/nrf52840/led_hal.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../hal/nrf52840/sd_hal.c
 )
 
 target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../)

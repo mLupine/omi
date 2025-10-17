@@ -1,14 +1,13 @@
 #include "device/core/sd_card.h"
+#include "hal/include/sd_hal.h"
 
 #include <ff.h>
 #include <string.h>
 #include <zephyr/device.h>
-#include <zephyr/drivers/gpio.h>
 #include <zephyr/fs/fs.h>
 #include <zephyr/fs/fs_sys.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
-#include <zephyr/pm/device.h>
 #include <zephyr/storage/disk_access.h>
 #include <zephyr/sys/check.h>
 
@@ -30,13 +29,9 @@ static struct fs_mount_t mp = {
 
 static const char *disk_mount_pt = "/SD:/";
 static bool is_mounted = false;
-static bool sd_enabled = false;
 
-// Get the device pointer for the SDHC SPI slot from the device tree
-static const struct device *const sd_dev = DEVICE_DT_GET(DT_NODELABEL(sdhc0));
-static const struct gpio_dt_spec sd_en = GPIO_DT_SPEC_GET_OR(DT_NODELABEL(sdcard_en_pin), gpios, {0});
+#ifdef CONFIG_OMI_ENABLE_OFFLINE_STORAGE
 
-// Audio file management globals
 uint8_t file_count = 0;
 uint32_t file_num_array[MAX_AUDIO_FILES];
 
@@ -44,109 +39,6 @@ uint32_t file_num_array[MAX_AUDIO_FILES];
 static char current_full_path[MAX_PATH_LENGTH];
 static char read_buffer[MAX_PATH_LENGTH];
 static char write_buffer[MAX_PATH_LENGTH];
-
-static int sd_enable_power(bool enable)
-{
-    int ret;
-    gpio_pin_configure_dt(&sd_en, GPIO_OUTPUT);
-    if (enable) {
-        ret = gpio_pin_set_dt(&sd_en, 1);
-        pm_device_action_run(sd_dev, PM_DEVICE_ACTION_RESUME);
-        sd_enabled = true;
-    } else {
-        ret = pm_device_action_run(sd_dev, PM_DEVICE_ACTION_SUSPEND);
-        // gpio_pin_set_dt(&sd_en, 0);
-        sd_enabled = false;
-    }
-    return ret;
-}
-
-static int sd_unmount()
-{
-    int ret;
-    ret = fs_unmount(&mp);
-    if (ret) {
-        LOG_INF("Disk unmounted error (%d) .", ret);
-        return ret;
-    }
-
-    LOG_INF("Disk unmounted.");
-    is_mounted = false;
-    sd_enable_power(false);
-    return 0;
-}
-
-static int sd_mount()
-{
-    int ret;
-    do {
-        static const char *disk_pdrv = DISK_DRIVE_NAME;
-        uint64_t memory_size_mb;
-        uint32_t block_count;
-        uint32_t block_size;
-
-        ret = sd_enable_power(true);
-        if (ret < 0) {
-            LOG_ERR("Failed to power on SD card (%d)", ret);
-            return ret;
-        }
-
-        int init_ret;
-        init_ret = disk_access_ioctl(disk_pdrv, DISK_IOCTL_CTRL_INIT, NULL);
-        if (init_ret != 0) {
-            LOG_ERR("Storage init ERROR! (%d)", init_ret);
-            break;
-        }
-
-        if (disk_access_ioctl(disk_pdrv, DISK_IOCTL_GET_SECTOR_COUNT, &block_count)) {
-            LOG_ERR("Unable to get sector count");
-            break;
-        }
-        LOG_INF("Block count %u", block_count);
-
-        if (disk_access_ioctl(disk_pdrv, DISK_IOCTL_GET_SECTOR_SIZE, &block_size)) {
-            LOG_ERR("Unable to get sector size");
-            break;
-        }
-        LOG_INF("Sector size %u", block_size);
-
-        memory_size_mb = (uint64_t) block_count * block_size;
-        LOG_INF("Memory Size(MB) %u", (uint32_t) (memory_size_mb >> 20));
-
-        if (disk_access_ioctl(disk_pdrv, DISK_IOCTL_CTRL_DEINIT, NULL) != 0) {
-            LOG_ERR("Storage deinit ERROR!");
-            break;
-        }
-    } while (0);
-    mp.mnt_point = DISK_MOUNT_PT;
-
-    if (is_mounted) {
-        LOG_INF("Disk already mounted.");
-        return 0;
-    }
-
-    if (fs_mount(&mp) != FS_RET_OK) {
-        LOG_INF("File system not found, creating file system...");
-        ret = fs_mkfs(FS_FATFS, (uintptr_t) mp.storage_dev, NULL, 0);
-        if (ret != 0) {
-            LOG_ERR("Error formatting filesystem [%d]", ret);
-            sd_enable_power(false);
-            return ret;
-        }
-
-        ret = fs_mount(&mp);
-        if (ret != FS_RET_OK) {
-            LOG_INF("Error mounting disk %d.", ret);
-            sd_enable_power(false);
-            return ret;
-        }
-    }
-
-    LOG_INF("Disk mounted.");
-    is_mounted = true;
-
-    return ret;
-}
 
 static int get_file_contents(struct fs_dir_t *zdp, struct fs_dirent *entry)
 {
@@ -175,79 +67,6 @@ static int get_file_contents(struct fs_dir_t *zdp, struct fs_dirent *entry)
         count++;
     }
     return count;
-}
-
-int app_sd_init(void)
-{
-    int ret = sd_mount();
-    if (ret != 0) {
-        return ret;
-    }
-    LOG_INF("SD card module initialized (Device: %s)", sd_dev->name);
-
-    // Initialize audio file management
-    ret = fs_mkdir("/SD:/audio");
-    if (ret == FR_OK) {
-        LOG_INF("audio directory created successfully");
-        initialize_audio_file(1);
-    } else if (ret == FR_EXIST) {
-        LOG_INF("audio directory already exists");
-    } else {
-        LOG_INF("audio directory creation failed: %d", ret);
-    }
-
-    // Scan existing audio files
-    struct fs_dir_t audio_dir_entry;
-    fs_dir_t_init(&audio_dir_entry);
-    int err = fs_opendir(&audio_dir_entry, "/SD:/audio");
-    if (err) {
-        LOG_ERR("error while opening directory %d", err);
-        return err;
-    }
-    LOG_INF("result of opendir: %d", err);
-
-    initialize_audio_file(1);
-    struct fs_dirent file_count_entry;
-    int found_files = get_file_contents(&audio_dir_entry, &file_count_entry);
-    if (found_files < 0) {
-        LOG_ERR("error getting file count");
-        return -1;
-    }
-
-    // If files exist but don't match our naming scheme, start fresh
-    if (found_files > 0) {
-        LOG_WRN("Found %d existing files, but using fresh file system", found_files);
-    }
-    file_count = 1;
-
-    fs_closedir(&audio_dir_entry);
-    LOG_INF("new num files: %d", file_count);
-
-    ret = move_write_pointer(file_count);
-    if (ret) {
-        LOG_ERR("error while moving the write pointer");
-        return ret;
-    }
-
-    ret = move_read_pointer(file_count);
-    if (ret) {
-        LOG_ERR("error while moving the reader pointer");
-        return ret;
-    }
-    LOG_INF("file count: %d", file_count);
-
-    // Check if the info file exists, if not create it
-    struct fs_dirent info_file_entry;
-    const char *info_path = "/SD:/info.txt";
-    ret = fs_stat(info_path, &info_file_entry);
-    if (ret) {
-        ret = create_file("info.txt");
-        save_offset(0);
-        LOG_INF("result of info.txt creation: %d ", ret);
-    }
-    LOG_INF("result of check: %d", ret);
-
-    return 0;
 }
 
 char *generate_new_audio_header(uint8_t num)
@@ -524,18 +343,193 @@ int get_offset(void)
     return offset_ptr[0];
 }
 
+void sd_on(void)
+{
+    sd_hal_power_on();
+}
+
+void sd_off(void)
+{
+    sd_hal_power_off();
+}
+
+bool is_sd_on(void)
+{
+    return sd_hal_is_enabled();
+}
+
+#endif
+
+static int sd_unmount()
+{
+    int ret;
+    ret = fs_unmount(&mp);
+    if (ret) {
+        LOG_INF("Disk unmounted error (%d) .", ret);
+        return ret;
+    }
+
+    LOG_INF("Disk unmounted.");
+    is_mounted = false;
+    sd_hal_power_off();
+    return 0;
+}
+
+static int sd_mount()
+{
+    int ret;
+    do {
+        static const char *disk_pdrv = DISK_DRIVE_NAME;
+        uint64_t memory_size_mb;
+        uint32_t block_count;
+        uint32_t block_size;
+
+        ret = sd_hal_power_on();
+        if (ret < 0) {
+            LOG_ERR("Failed to power on SD card (%d)", ret);
+            return ret;
+        }
+
+        int init_ret;
+        init_ret = disk_access_ioctl(disk_pdrv, DISK_IOCTL_CTRL_INIT, NULL);
+        if (init_ret != 0) {
+            LOG_ERR("Storage init ERROR! (%d)", init_ret);
+            break;
+        }
+
+        if (disk_access_ioctl(disk_pdrv, DISK_IOCTL_GET_SECTOR_COUNT, &block_count)) {
+            LOG_ERR("Unable to get sector count");
+            break;
+        }
+        LOG_INF("Block count %u", block_count);
+
+        if (disk_access_ioctl(disk_pdrv, DISK_IOCTL_GET_SECTOR_SIZE, &block_size)) {
+            LOG_ERR("Unable to get sector size");
+            break;
+        }
+        LOG_INF("Sector size %u", block_size);
+
+        memory_size_mb = (uint64_t) block_count * block_size;
+        LOG_INF("Memory Size(MB) %u", (uint32_t) (memory_size_mb >> 20));
+
+        if (disk_access_ioctl(disk_pdrv, DISK_IOCTL_CTRL_DEINIT, NULL) != 0) {
+            LOG_ERR("Storage deinit ERROR!");
+            break;
+        }
+    } while (0);
+    mp.mnt_point = DISK_MOUNT_PT;
+
+    if (is_mounted) {
+        LOG_INF("Disk already mounted.");
+        return 0;
+    }
+
+    if (fs_mount(&mp) != FS_RET_OK) {
+        LOG_INF("File system not found, creating file system...");
+        ret = fs_mkfs(FS_FATFS, (uintptr_t) mp.storage_dev, NULL, 0);
+        if (ret != 0) {
+            LOG_ERR("Error formatting filesystem [%d]", ret);
+            sd_hal_power_off();
+            return ret;
+        }
+
+        ret = fs_mount(&mp);
+        if (ret != FS_RET_OK) {
+            LOG_INF("Error mounting disk %d.", ret);
+            sd_hal_power_off();
+            return ret;
+        }
+    }
+
+    LOG_INF("Disk mounted.");
+    is_mounted = true;
+
+    return ret;
+}
+
+int app_sd_init(void)
+{
+    int ret = sd_mount();
+    if (ret != 0) {
+        return ret;
+    }
+
+    const struct device *sd_dev = sd_hal_get_device();
+    if (sd_dev != NULL) {
+        LOG_INF("SD card module initialized (Device: %s)", sd_dev->name);
+    } else {
+        LOG_INF("SD card module initialized");
+    }
+
+#ifdef CONFIG_OMI_ENABLE_OFFLINE_STORAGE
+    ret = fs_mkdir("/SD:/audio");
+    if (ret == FR_OK) {
+        LOG_INF("audio directory created successfully");
+        initialize_audio_file(1);
+    } else if (ret == FR_EXIST) {
+        LOG_INF("audio directory already exists");
+    } else {
+        LOG_INF("audio directory creation failed: %d", ret);
+    }
+
+    struct fs_dir_t audio_dir_entry;
+    fs_dir_t_init(&audio_dir_entry);
+    int err = fs_opendir(&audio_dir_entry, "/SD:/audio");
+    if (err) {
+        LOG_ERR("error while opening directory %d", err);
+        return err;
+    }
+    LOG_INF("result of opendir: %d", err);
+
+    initialize_audio_file(1);
+    struct fs_dirent file_count_entry;
+    int found_files = get_file_contents(&audio_dir_entry, &file_count_entry);
+    if (found_files < 0) {
+        LOG_ERR("error getting file count");
+        return -1;
+    }
+
+    if (found_files > 0) {
+        LOG_WRN("Found %d existing files, but using fresh file system", found_files);
+    }
+    file_count = 1;
+
+    fs_closedir(&audio_dir_entry);
+    LOG_INF("new num files: %d", file_count);
+
+    ret = move_write_pointer(file_count);
+    if (ret) {
+        LOG_ERR("error while moving the write pointer");
+        return ret;
+    }
+
+    ret = move_read_pointer(file_count);
+    if (ret) {
+        LOG_ERR("error while moving the reader pointer");
+        return ret;
+    }
+    LOG_INF("file count: %d", file_count);
+
+    struct fs_dirent info_file_entry;
+    const char *info_path = "/SD:/info.txt";
+    ret = fs_stat(info_path, &info_file_entry);
+    if (ret) {
+        ret = create_file("info.txt");
+        save_offset(0);
+        LOG_INF("result of info.txt creation: %d ", ret);
+    }
+    LOG_INF("result of check: %d", ret);
+#endif
+
+    return 0;
+}
+
 int app_sd_off(void)
 {
     if (is_mounted) {
         sd_unmount();
     } else {
-        sd_enable_power(false);
-        sd_enabled = false;
+        sd_hal_power_off();
     }
     return 0;
-}
-
-bool is_sd_on(void)
-{
-    return sd_enabled;
 }
